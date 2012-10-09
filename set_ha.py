@@ -1,4 +1,4 @@
-import sys, time
+import sys, time, argparse
 
 import XenAPI, provision
 
@@ -13,4 +13,11 @@ import XenAPI, provision
 # The delay to wait before proceeding to the next order in the startup sequence (seconds)
 # Default value:	0
 # Published in:	XenServer 6.0	The delay to wait before proceeding to the next order in the startup sequence (seconds)
+
+parser = argparse.ArgumentParser(description='Set HA properties of a VM')
+parser.add_argument("--name", help="Name of the VM to manage")
+parser.add_argument("--restart-priority", "-p", type=int, help="Order in which the VM is restarted (1=first, 100=last)")
+parser.add_argument("--restart-delay", "-d", type=int, help="Restart delay")
+
+args = parser.parseargs
 
