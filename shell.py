@@ -23,6 +23,8 @@ import sys
 
 import XenAPI
 
+dir(XenAPI)
+
 def logout():
     try:
         server.xenapi.session.logout()
