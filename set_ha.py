@@ -2,7 +2,9 @@
 
 import os, sys, inspect, time, argparse, getpass
 
-import lib.XenAPI
+import XenAPI
+
+dir(XenAPI)
 
 # void set_ha_restart_priority (VM ref, string)
 # Set the value of the ha_restart_priority field
@@ -24,31 +26,35 @@ parser.add_argument("--priority", "-p", type=int, help="Order in which the VM is
 parser.add_argument("--delay", "-d", type=int, help="Restart delay")
 parser.add_argument("--password", help="root password for Xen Server")
 
-
 args = parser.parse_args()
+
+# Variables - declarations not need in Python, so most are only to document:
+user		=	"root" 			# Our edition doesn't have user management so always need to auth as root. Can easily add as an argument later.
+host 		= 	args.host
+priority 	=	args.priority 	# HA Priority
+delay 		= 	args.delay 		# HA Delay
+
+# Conditional (optional) variables:
+
+if not args.password: 			# Password for API authentication
+	password = getpass.getpass("Root password: ")
+else:
+	password = str(args.password)
+
+if not args.host:				# Host we send the API calls to
+	# TODO: auto-detect from a list of servers
+	host = raw_input("Xen Host: ")
+	# raw_input deprecated in Python 3.x, change to input http://docs.python.org/py3k/whatsnew/3.0.html#builtins
+else:
+	host = args.host
 
 print ("VM Name: " + str(args.name))
 print ("HA Priority: " + str(args.priority))
 print ("HA Delay: " + str(args.delay))
 
-if not args.password:
-	pwd = getpass.getpass("Root password: ")
-else:
-	pwd = str(args.password)
-
-if not args.host:
-	# TODO: auto-detect from a list of servers
-	host = raw_input("Xen Host: ")
-
-	# raw_input deprecated in Python 3.x, change to input http://docs.python.org/py3k/whatsnew/3.0.html#builtins
-	#var = raw_input("Enter root password: ")
-else:
-	host = args.host
-
-
 # We have all we need, open a Xen session
 xenurl = "https://" + host
 print "API URL: " + xenurl
 
-session = XenAPI.Session(url)
-session.xenapi.login_with_password(username, password)
+session = XenAPI.Session(xenurl)
+session.xenapi.login_with_password(user, password)
