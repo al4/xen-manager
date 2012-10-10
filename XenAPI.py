@@ -48,6 +48,7 @@ import gettext
 import xmlrpclib
 import httplib
 import socket
+import sys
 
 translation = gettext.translation('xen-xm', fallback = True)
 
@@ -90,12 +91,16 @@ class UDSTransport(xmlrpclib.Transport):
     def add_extra_header(self, key, value):
         self._extra_headers += [ (key,value) ]
     def make_connection(self, host):
-        return UDSHTTP(host)
+        # Python 2.4 compatibility
+        if sys.version_info[0] <= 2 and sys.version_info[1] < 6:
+            return UDSHTTP(host)
+        else:
+            return UDSHTTPConnection(host)
     def send_request(self, connection, handler, request_body):
         connection.putrequest("POST", handler)
         for key, value in self._extra_headers:
             connection.putheader(key, value)
-        
+
 class Session(xmlrpclib.ServerProxy):
     """A server proxy and session manager for communicating with xapi using
     the Xen-API.

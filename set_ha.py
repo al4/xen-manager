@@ -4,7 +4,6 @@ import os, sys, inspect, time, argparse, getpass
 
 import XenAPI
 
-dir(XenAPI)
 
 # void set_ha_restart_priority (VM ref, string)
 # Set the value of the ha_restart_priority field
@@ -56,5 +55,62 @@ print ("HA Delay: " + str(args.delay))
 xenurl = "https://" + host
 print "API URL: " + xenurl
 
+# Connect and auth
 session = XenAPI.Session(xenurl)
 session.xenapi.login_with_password(user, password)
+
+print vars(session)
+
+#### Code goes here...
+vms = session.xenapi.VM.get_by_name_label('alex1')
+print "Alex1" + str(vms)
+
+
+
+####
+
+print "Logging out..."
+session.xenapi.session.logout()
+
+exit()
+
+
+
+
+
+
+session.xenapi_request(VM.suspend())
+
+
+dir(handle)
+
+exit()
+
+print vars(session)
+
+# Print list of hosts
+hostIDs = session.xenapi.host.get_all()								# <- results in an array of UUIDs
+hostlist = [session.xenapi.host.get_name_label(x) for x in hostIDs]	# <- getting the name of each host
+
+#print "Host List: " + ', '.join(hostlist)
+
+session.xenapi_request(VM.suspend())
+
+# for x in hostIDs:
+# 	print "Host: " + session.xenapi.host.get_name_label(x)
+# 	print "\t - "
+
+
+# Set HA Priority of given VM
+# vmlabel = session.xenapi.VM.get_by_name_label vm
+
+# print var(vmlabel)
+
+
+
+
+
+
+
+
+
