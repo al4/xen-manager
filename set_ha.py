@@ -1,17 +1,11 @@
 #!/usr/bin/python
 
 import os, sys, inspect, time, argparse, getpass
-
 import XenAPI
 
 import pprint # for debugging
 
 # XenAPI doc: http://docs.vmd.citrix.com/XenServer/6.0.0/1.0/en_gb/api/
-
-# void set_start_delay (VM ref, int)
-# Set this VM's start delay in seconds
-# void set_order (VM ref, int)
-# Set this VM's boot order
 
 # Build commandline argument parser
 parser = argparse.ArgumentParser(description='Set HA properties of a VM')
