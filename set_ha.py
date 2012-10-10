@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os, sys, inspect, time, argparse, getpass
+import os, sys, inspect, time, argparse, getpass, ConfigParser
 import XenAPI
 
 import pprint # for debugging
@@ -8,77 +8,120 @@ import pprint # for debugging
 # XenAPI doc: http://docs.vmd.citrix.com/XenServer/6.0.0/1.0/en_gb/api/
 
 # Build commandline argument parser
-parser = argparse.ArgumentParser(description='Set HA properties of a VM')
-parser.add_argument("host", help="Host server")
-parser.add_argument("name", help="Name of the VM to manage")
-parser.add_argument("--password", help="root password for Xen Server")
-parser.add_argument("--priority", "-p", type=str, help='HA restart Priority [""/"restart"/"best-effort"] ("restart" by default')
-parser.add_argument("--delay", "-d", type=int, help="The delay to wait before proceeding to the next order in the startup sequence (seconds)")
-parser.add_argument("--order", "-o", type=int, help="The point in the startup or shutdown sequence at which the VM will be started")
+parser = argparse.ArgumentParser(description='Sets HA properties across our Xen cluster')
+parser.add_argument("--password", "-p", help="root password for Xen Server (uses config if not set)")
+parser.add_argument("--file", "-f", help="CSV file to parse values from (see comments for format)")
 
 args = parser.parse_args()
 
-# Variables - declarations not need in Python, so most are only to document:
-user		=	"root" 			# Our license doesn't have user management so always need to auth as root. Can easily add as an argument later.
-host 		= 	args.host
-vmname		=	args.name 		# Name of VM to manage
-priority 	=	args.priority 	# HA priority
-delay 		= 	args.delay 		# HA Start delay
-order 		=	args.order 		# HA Start order
+config = ConfigParser.RawConfigParser()
+config.read('xen_manage.cfg')
 
-# Conditional (optional) variables:
+username	=	config.get('Connection', 'username') 	# Our license doesn't have user management so always need to auth as root. Can easily add as an argument later.
+host 		= 	config.get('Connection', 'host')		# API sever we're connection to (the Xen master)
 
-if not args.priority:
-	# Set this to a sensible default
-	priority = "restart"
+if not args.password:
+	password = config.get('Connection', 'password')		# Don't commit this to VCS...
+	if password = '':
+		# Clearly hasn't been set, prompt
+		password = getpass.getpass("Root password: ")
 
-if not args.order and not args.delay:
-	print "Must set order or delay"
-	exit()
+# Get defaults:
+default_restart_priority = config.get('HA Defaults', 'restart_priority')
+default_start_order = config.get('HA Defauls', 'start_order')
+default_start_delay = config.get('HA Defaults', 'start_delay')
 
-if not args.password: 			# Password for API authentication
-	password = getpass.getpass("Root password: ")
-else:
-	password = str(args.password)
+# Set session to None so we can test if it's been initialised
+session = None
 
-if not args.host:				# Host we send the API calls to
-	# TODO: auto-detect from a list of servers
-	host = raw_input("Xen Host: ")
-	# raw_input deprecated in Python 3.x, change to input http://docs.python.org/py3k/whatsnew/3.0.html#builtins
-else:
-	host = args.host
+# Right, let's get down to the main class...
+class virtual_machine:
+	def __init__(self, name):
+		# We set the name on initialisation
+		self.name = name
 
-print ("VM Name: " + vmname)
-print ("Start order: " + str())
-print ("HA Priority: " + str(priority))
-print ("HA Delay: " + str(delay))
+	def set_name(name):
+		# Simple class to set the name (we don't write this back to Xen, only use it for input)
+		self.name = name
+		return 0
 
-# We have all we need, open a Xen session
+	def set_order(order):
+		self.order = order
+		print "Setting order to " + str(order)
+		session.xenapi.VM.set_order(self.id, str(order))
+
+	def set_priority(priority):
+		# Sets the priority by
+		self.priority = priority
+
+		print "Setting ha_restart_priority to " + str(priority)
+
+		session.xenapi.VM.set_ha_restart_priority(self.id, "restart")
+
+	def set_delay(delay):
+		# set the delay attribute
+		self.delay = delay
+		print "Setting start_delay to " + str(delay)
+		session.xenapi.VM.set_start_delay(self.id, str(delay))	# <- documentation says int but you get FIELD_TYPE_ERROR if you pass an integer here, happy when converted to str
+
+		return 0
+
+	def set_cluster(cluster_name):
+		# set the cluster attribute
+		self.cluster = cluster_name
+		return 0
+
+	def get_cluster():
+		# get the cluster name by reading the CSV file
+		#
+		#
+		#
+		# lots of code goes here
+
+		cluster = "foo"
+		self.set_cluster(cluster)
+
+
+	def set_machine_id(id):
+		# Set the machine ID (probably won't know this without calling get_machine_id)
+		self.id = id
+		return 0
+
+	def get_machine_id:
+		# Function to get the machine ID from Xen based on the name. Names should be unique so we
+		# throw an error if there is more than 1 match.
+		ids = session.xenapi.VM.get_by_name_label(vmname)
+		print vmname + " " + str(ids)
+
+		if len(ids) != 1:
+			print "Error: VM name had more than one match"
+			exit()
+
+		self.set_machine_id(ids[0])
+
+		return ids[0]
+
+# # Connection class... necessary?
+# class connection:
+# 	# Defines the connection to the Xen server and provides methods for logging in and logging out
+# 	def __init__(self,host,username,password):
+# 		# do something
+# 	def connect():
+# 	def login():
+# 		# login to the server, returns a session object
+# 	def logout():
+# 		# logout from the server
+
 xenurl = "https://" + host
 print "API URL: " + xenurl
 
 # Connect and auth
 session = XenAPI.Session(xenurl)
-session.xenapi.login_with_password(user, password)
+session.xenapi.login_with_password(username, password)
 
 #### Code goes here...
-vms = session.xenapi.VM.get_by_name_label(vmname)
-print vmname + " " + str(vms)
 
-# check length to ensure we are only setting 1 vm
-# if len(vms) > 1:
-# print "error: " + str(len(vms))
 
-# set HA for this VM
-print "Setting ha_restart_priority to " + str(priority)
-#print session.xenapi.VM.get_record(vms[0])
-session.xenapi.VM.set_ha_restart_priority(vms[0], "restart")
-
-print "Setting start_delay to " + str(delay)
-session.xenapi.VM.set_start_delay(vms[0], str(delay))	# <- documentation says int but you get FIELD_TYPE_ERROR if you pass an integer here, happy when converted to str
-
-print "Setting order to " + str(order)
-session.xenapi.VM.set_order(vms[0], str(order))
 
 ####
 
