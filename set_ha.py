@@ -11,7 +11,6 @@ pp = pprint.PrettyPrinter(indent=2) # for debugging
 # Build commandline argument parser
 parser = argparse.ArgumentParser(description='Sets HA properties across our Xen cluster')
 parser.add_argument("--password", "-p", help="root password for Xen Server (uses config if not set)")
-parser.add_argument("--file", "-f", help="CSV file to parse values from (see comments for format)")
 
 args = parser.parse_args()
 
@@ -93,7 +92,8 @@ class virtual_machine:
 			return 1
 
 		if len(ids) > 1:
-			# This is bad, delete the offending VM! In future we may want to continue anyway and set parameters on both for automated scenarios
+			# This is bad, delete the offending VM! In future we may want to continue anyway and set parameters on both
+			# for automated scenarios
 			message = "VM name \"" + self.name + "\" has more than one match!"
 			notify(message)
 			return 1
@@ -207,11 +207,11 @@ def set_vm_priorities():
 
 			# Check if the VM exists
 			if vm.read_id() == 1:
-				# Move on, notices should have been printed by read_id
+				# Move on to next loop iteration, notices should have been printed by vm.read_id
 				continue
-			else:
-				print 'Found "' + vmname + '", getting attributes'
-				vm.read_from_xen()
+
+			print 'Found "' + vmname + '", getting attributes'
+			vm.read_from_xen()
 
 			# vm.dump_attrs()
 
