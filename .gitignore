@@ -2,4 +2,4 @@
 test.py
 xen_install.py
 *.pyc
-xen_manage.cfg
+xenm.cfg

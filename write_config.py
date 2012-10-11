@@ -25,5 +25,5 @@ config.set('HA Defaults', 'start_delay', "0")					# Numerical
 config.add_section('Logging')
 config.set('Logging', 'level', "debug")
 
-with open('xen_manage.cfg', 'wb') as configfile:
+with open('xenm.cfg', 'wb') as configfile:
 	config.write(configfile)

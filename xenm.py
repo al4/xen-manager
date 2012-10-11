@@ -15,7 +15,7 @@ parser.add_argument("--password", "-p", help="root password for Xen Server (uses
 args = parser.parse_args()
 
 config = ConfigParser.RawConfigParser()
-config.read('xen_manage.cfg')
+config.read('xenm.cfg')
 
 username	=	config.get('Connection', 'username') 	# Our license doesn't have user management so always need to auth as root. Can easily add as an argument later.
 host 		= 	config.get('Connection', 'host')		# API sever we're connection to (the Xen master)
