@@ -2,3 +2,4 @@
 test.py
 xen_install.py
 *.pyc
+xen_manger.cfg
