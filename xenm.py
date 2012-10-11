@@ -9,16 +9,42 @@ pp = pprint.PrettyPrinter(indent=2) # for debugging
 # XenAPI doc: http://docs.vmd.citrix.com/XenServer/6.0.0/1.0/en_gb/api/
 
 # Build commandline argument parser
-parser = argparse.ArgumentParser(description='Sets HA properties across our Xen cluster')
+parser = argparse.ArgumentParser(description='Manages our Xen cluster')
+#parser.add_argument('action', help="action to perform")
 parser.add_argument("--password", "-p", help="root password for Xen Server (uses config if not set)")
+
+# We setup subparsers for each mode
+subparsers = parser.add_subparsers()
+
+# Parent parser for modes which operate on a single VM
+parent_parser_onevm = argparse.ArgumentParser(add_help=False)
+parent_parser_onevm.add_argument('vmname', help='name of VM to perform action on')
+parent_parser_onevm.add_argument('--host', help='Xen server host to connect to (must be the master of the cluster)')
+
+# Parent for modes which operate on multiple VMs
+parent_parser_multivm = argparse.ArgumentParser(add_help=False)
+parent_parser_multivm.add_argument('--vmlist', help='CSV file with a list of VMs and priorities')
+
+# The subparsers, which should include one of the parents above
+parser_start = subparsers.add_parser('start', help='starts a VM', parents=[parent_parser_onevm])
+parser_stop = subparsers.add_parser('stop', help='stops a VM', parents=[parent_parser_onevm])
+parser_restart = subparsers.add_parser('restart', help='restarts a VM', parents=[parent_parser_onevm])
+parser_remove = subparsers.add_parser('remove', help='removes a VM', parents=[parent_parser_onevm])
+parser_spawn = subparsers.add_parser('spawn', help='spawns a new VM', parents=[parent_parser_onevm])
+parser_respawn = subparsers.add_parser('respawn', help='removes and spawns a new copy of a VM', parents=[parent_parser_onevm])
+parser_enforce = subparsers.add_parser('enforce', help='enforce the HA policy on one VM', parents=[parent_parser_onevm])
+parser_enforce_all = subparsers.add_parser('enforce-all', help='check the HA policy on all VMs and enforce the policy (config must be set)', parents=[parent_parser_multivm])
 
 args = parser.parse_args()
 
+# Get config options from xenm.cfg if not set on command line
 config = ConfigParser.RawConfigParser()
 config.read('xenm.cfg')
 
-username	=	config.get('Connection', 'username') 	# Our license doesn't have user management so always need to auth as root. Can easily add as an argument later.
-host 		= 	config.get('Connection', 'host')		# API sever we're connection to (the Xen master)
+username = config.get('Connection', 'username') 	# Our license doesn't have user management so always need to auth as root. Can easily add as an argument later.
+
+if not args.host:
+	host = config.get('Connection', 'host')
 
 if not args.password:
 	password = config.get('Connection', 'password')		# Don't commit this to VCS...
@@ -190,7 +216,9 @@ class virtual_machine:
 ### Functions
 # Use a try:finally around anything which calls XenAPI to ensure we logout
 
-def set_vm_priorities():
+def enforce_ha():
+	# Enforces HA policy on all VMs.
+
 	# Open CSV file for reading
 	with open (priorities_file, 'rb') as csvfile:
 		reader = csv.reader(csvfile, delimiter=' ')
@@ -238,9 +266,7 @@ try:
 except:
 	error("Failed to connect to the Xen server")
 
-#
-
-set_vm_priorities()
+enforce_ha()
 
 disconnect()
 
