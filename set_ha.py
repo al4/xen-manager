@@ -34,6 +34,11 @@ default_start_delay = config.get('HA Defaults', 'start_delay')
 # Set session to None so we can test if it's been initialised
 session = None
 
+def error(self, message):
+	# Throw message and exit
+	print "ERROR" + str(message)
+	exit()
+
 # Right, let's get down to the main class...
 class virtual_machine:
 	def __init__(self, name):
@@ -47,11 +52,36 @@ class virtual_machine:
 	# "getting" methods we are computing or parsing the value somehow
 	# "read" methods get the current settings from Xen or CSV and set them in the class, they do not set them anywhere
 
-
-
 	def set_name(self, name):
 		# Simple class to set the name (we don't write this back to Xen, only use it for input)
 		self.name = name
+		return 0
+
+	def read_from_xen(self):
+		# Reads all required values from Xen and sets them in the class
+
+		# Is the name and id set?
+		if not self.name:
+			error("Name is not set")
+		if not self.id:
+			# easy fix, get it
+			self.get_id()
+
+		data = session.xenapi.VM.get_record(vmid)
+		print "Got record: "
+		pp = pprint.PrettyPrinter(indent=2)
+		#pp.pprint(data)
+
+		# Now we just need to parse the values we need and set in the class. Might useful:
+		# ha_restart_priority, start_delay, power_state, ha_always_run,
+
+		print "ha_restart_priority: " + str(data['ha_restart_priority'])
+		self.ha_restart_priority = str(data['ha_restart_priority'])
+		print "start_delay: " + str(data['start_delay'])
+		self.start_delay = str(data['start_delay'])
+		print "power_state: " + str(data['power_state'])
+		self.power_state = str(data['power_state'])
+
 		return 0
 
 	def set_order(self, order):
@@ -59,20 +89,18 @@ class virtual_machine:
 		print "Setting order for " + self.name + " to " + str(order)
 		session.xenapi.VM.set_order(self.id, str(order))
 
-	def set_priority(self, priority):
-		# Sets the priority by
-		self.priority = priority
-
+	def set_ha_restart_priority(self, priority):
+		# Sets the priority
+		self.ha_restart_priority = priority
 		print "Setting ha_restart_priority to " + str(priority)
-
 		session.xenapi.VM.set_ha_restart_priority(self.id, "restart")
+		return 0
 
 	def set_delay(self, delay):
 		# set the delay attribute
 		self.delay = delay
 		print "Setting start_delay for " + self.name + " to " + str(delay)
 		session.xenapi.VM.set_start_delay(self.id, str(delay))	# <- documentation says int but you get FIELD_TYPE_ERROR if you pass an integer here, happy when converted to str
-
 		return 0
 
 	def set_cluster(self, cluster_name):
@@ -94,7 +122,7 @@ class virtual_machine:
 		# get the implant from DNS TXT record
 		return 0
 
-	def get_machine_id(self):
+	def get_id(self):
 		# Function to get the machine ID from Xen based on the name. Names should be unique so we
 		# throw an error if there is more than 1 match.
 		ids = session.xenapi.VM.get_by_name_label(self.name)
@@ -104,9 +132,11 @@ class virtual_machine:
 			print "Error: VM name had more than one match"
 			exit()
 
-		self.set_machine_id(ids[0])
+		self.id = ids[0]
 
 		return ids[0]
+
+
 
 
 xenurl = "https://" + host
@@ -116,17 +146,19 @@ print "API URL: " + xenurl
 session = XenAPI.Session(xenurl)
 session.xenapi.login_with_password(username, password)
 
-#### Code goes here...
+try:
+	#### Code goes here...
+	vm = virtual_machine("alex1")
+	vmid = vm.get_id()
 
-vm = virtual_machine("alex1")
-vm.get_machine_id()
-#vm.set_machine_id(myid)
-vm.set_delay(1)
-vm.set_order(500)
+	# vm.set_delay(1)
+	# vm.set_order(500)
 
-####
+	vm.read_from_xen()
 
-print "Logging out..."
-session.xenapi.session.logout()
+	####
+finally:
+	print "Logging out..."
+	session.xenapi.session.logout()
 
 exit()
