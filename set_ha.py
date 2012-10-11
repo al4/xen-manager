@@ -22,7 +22,6 @@ host 		= 	config.get('Connection', 'host')		# API sever we're connection to (the
 
 if not args.password:
 	password = config.get('Connection', 'password')		# Don't commit this to VCS...
-	print password + str(type(password))
 	if password == None:
 		# Clearly hasn't been set, prompt
 		password = getpass.getpass("Root password: ")
@@ -46,7 +45,9 @@ class virtual_machine:
 	#### Setting and Getting methods ###
 	# "setting" methods we are simply taking input and setting the value in the class and Xen
 	# "getting" methods we are computing or parsing the value somehow
-	# "read" methods get the current settings from Xen and set them in the class
+	# "read" methods get the current settings from Xen or CSV and set them in the class, they do not set them anywhere
+
+
 
 	def set_name(self, name):
 		# Simple class to set the name (we don't write this back to Xen, only use it for input)
@@ -55,7 +56,7 @@ class virtual_machine:
 
 	def set_order(self, order):
 		self.order = order
-		print "Setting order to " + str(order)
+		print "Setting order for " + self.name + " to " + str(order)
 		session.xenapi.VM.set_order(self.id, str(order))
 
 	def set_priority(self, priority):
@@ -93,16 +94,11 @@ class virtual_machine:
 		# get the implant from DNS TXT record
 		return 0
 
-	def set_machine_id(self, id):
-		# Set the machine ID (probably won't know this without calling get_machine_id)
-		self.id = id
-		return 0
-
 	def get_machine_id(self):
 		# Function to get the machine ID from Xen based on the name. Names should be unique so we
 		# throw an error if there is more than 1 match.
 		ids = session.xenapi.VM.get_by_name_label(self.name)
-		print self.name + " " + str(ids)
+		print "Got ID for " + self.name + ": " + str(ids)
 
 		if len(ids) != 1:
 			print "Error: VM name had more than one match"
@@ -123,9 +119,10 @@ session.xenapi.login_with_password(username, password)
 #### Code goes here...
 
 vm = virtual_machine("alex1")
-myid = vm.get_machine_id()
-vm.set_machine_id(myid)
-vm.set_delay(10)
+vm.get_machine_id()
+#vm.set_machine_id(myid)
+vm.set_delay(1)
+vm.set_order(500)
 
 ####
 
