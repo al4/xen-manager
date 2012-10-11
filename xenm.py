@@ -4,7 +4,7 @@ import os, sys, inspect, time, argparse, getpass, ConfigParser, csv
 import XenAPI
 
 # Our modules
-import class_vm
+from class_vm import virtual_machine
 
 import pprint # for debugging
 pp = pprint.PrettyPrinter(indent=2) # for debugging
@@ -27,9 +27,8 @@ def notify(message):
 def disconnect():
 	if session != None:
 		print "Logging out..."
-		session.xenapi.session.logout()
+		session.xenapi.logout()
 	exit()
-
 
 ### Functions for the sub-commands
 def action_list():
@@ -37,16 +36,66 @@ def action_list():
 	error(message)
 
 def action_start():
-	message= "not implemented yet"
-	error(message)
+	# Check VM is running
+	vm = virtual_machine(vmname)
+	vm.connect_host(host, username, password)
+	myid = vm.read_id()
+
+	if myid == 1:
+		# does not exist
+		message="VM does not exist"
+		error(message)
+	else:
+		print myid
+
+	vm.read_from_xen()
+	result = vm.start()
+
+	if result == 0:
+		print "Start succeeded"
+	else:
+		error(result)
 
 def action_stop():
-	message="not implemented yet"
-	error(message)
+	# Check VM is running
+	vm = virtual_machine(vmname)
+	vm.connect_host(host, username, password)
+	myid = vm.read_id()
+
+	if myid == 1:
+		# does not exist
+		message="VM does not exist"
+		error(message)
+	else:
+		print myid
+
+	vm.read_from_xen()
+	result = vm.clean_shutdown()
+
+	if result == 0:
+		print "Reboot succeeded"
+	else:
+		error(result)
 
 def action_restart():
-	message="not implemented yet"
-	error(message)
+	# Check VM is running
+	vm = virtual_machine(vmname)
+	if vm.read_id == 1:
+		# does not exist
+		message="VM does not exist"
+		error(message)
+
+	var = vm.read_from_xen()
+	if var != 0:
+		error("failed to read data from Xen")
+
+	result = vm.clean_reboot()
+
+	if result == 0:
+		print "Reboot succeeded"
+	else:
+		error(result)
+	print "BLAHASDKLHASD"
 
 def action_remove():
 	message="not implemented yet"
@@ -116,19 +165,21 @@ subparsers = parser.add_subparsers(dest='action')
 # Parent parser for modes which operate on a single VM
 parent_parser_onevm = argparse.ArgumentParser(add_help=False)
 parent_parser_onevm.add_argument('vmname', help='name of VM to perform action on')
+parent_parser_onevm.set_defaults(vmname=None)
 
 # Parent for modes which operate on multiple VMs
 parent_parser_multivm = argparse.ArgumentParser(add_help=False)
 parent_parser_multivm.add_argument('--vmlist', help='CSV file with a list of VMs and priorities')
+parent_parser_multivm.set_defaults(vmlist=None)
 
 # The subparsers, which should include one of the parents above
 parser_start = subparsers.add_parser('list', help='list all VMs')
 parser_start.set_defaults(func=action_list)
 parser_start = subparsers.add_parser('start', help='starts a VM', parents=[parent_parser_onevm])
 parser_start.set_defaults(func=action_start)
-parser_stop = subparsers.add_parser('stop', help='stops a VM', parents=[parent_parser_onevm])
+parser_stop = subparsers.add_parser('stop', help='performs a clean shutdown', parents=[parent_parser_onevm])
 parser_stop.set_defaults(func=action_stop)
-parser_restart = subparsers.add_parser('restart', help='restarts a VM', parents=[parent_parser_onevm])
+parser_restart = subparsers.add_parser('restart', help='performs a clean reboot', parents=[parent_parser_onevm])
 parser_restart.set_defaults(func=action_restart)
 parser_remove = subparsers.add_parser('remove', help='removes a VM', parents=[parent_parser_onevm])
 parser_remove.set_defaults(func=action_remove)
@@ -162,6 +213,7 @@ else:
 host = config.get('Connection', 'host')
 username = config.get('Connection', 'username') 	# Our license doesn't have user management so always need to auth as root. Can easily add as an argument later.
 password = config.get('Connection', 'password')
+vmname = args.vmname
 
 # Override if set on command line
 if args.host != None:
@@ -186,19 +238,10 @@ if not os.path.isfile(vm_list):
 	message = 'Config file "' + str(configfile) + '" does not exist'
 	error(message)
 
-# Connect and auth
-xenurl = "https://" + host
-print "Connecting to Xen Server..."
-try:
-	session = XenAPI.Session(xenurl)
-	session.xenapi.login_with_password(username, password)
-except:
-	message = 'Failed to connect to "' + host + '"'
-	print message
-	exit()
 
-# Now that we're connected we can calls the function select by args (func=)
-#args.func()
+
+# Call the function selected by set_default(func=)
+args.func()
 
 disconnect()
 

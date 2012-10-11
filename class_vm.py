@@ -1,3 +1,5 @@
+import XenAPI
+
 # Right, let's get down to the main class...
 class virtual_machine:
 	def __init__(self, name):
@@ -15,6 +17,26 @@ class virtual_machine:
 	# "setting" methods simply take input and set the value in the class and Xen
 	# "getting" methods return the current value
 	# "read" methods get the current settings from Xen or CSV and set them in the class, they do not set them anywhere
+
+	def connect_host(self, host, username, password):
+		# Connect and auth
+		xenurl = "https://" + host
+		print "Connecting to Xen Server..."
+		# try:
+		session = XenAPI.Session(xenurl)
+		session.xenapi.login_with_password(username, password)
+
+		# except:
+		# message = 'Failed to connect to "' + host + '"'
+		# print message
+		# exit()
+
+		self.session = session
+		return session
+
+	def disconnect_host(self):
+		self.session.xenapi.logout()
+		return 0
 
 	def dump_attrs(self):
 		# For debugging, must be a built-in way to do this but I'm not familiar enough with Python yet...
@@ -34,12 +56,12 @@ class virtual_machine:
 	def read_id(self):
 		# Function to get the machine ID from Xen based on the name. Names should be unique so we
 		# throw an error if there is more than 1 match.
+
 		try:
-			ids = session.xenapi.VM.get_by_name_label(self.name)
+			ids = self.session.xenapi.VM.get_by_name_label(self.name)
 		except:
 			message = "XenAPI threw exception trying to get ID"
-			notify(message)
-			return 1
+			return message
 
 		if len(ids) > 1:
 			# This is bad, delete the offending VM! In future we may want to continue anyway and set parameters on both
@@ -60,12 +82,11 @@ class virtual_machine:
 	def read_from_xen(self):
 		# Reads all required values from Xen and sets them in the class
 		try:
-			data = session.xenapi.VM.get_record(self.id)
+			data = self.session.xenapi.VM.get_record(self.id)
 			#pp.pprint(data)
 		except:
 			# If the XenAPI throws an exception, notify and return 1
-			notify("Failed to read VM data from Xen server")
-			return 1
+			return "Failed to read VM data from Xen server"
 
 		# Parse the values we need and set them in the class. Might be useful:
 		# 	ha_restart_priority, start_delay, power_state, order
@@ -135,4 +156,30 @@ class virtual_machine:
 	def get_implant(self):
 		# get the implant from DNS TXT record
 		return 0
+
+
+
+	# Actions
+	def start(self):
+		if self.power_state == "Running":
+			return "Machine is already running"
+		else:
+			self.session.xenapi.VM.start(self.id, False, False)
+			return 0
+
+	def clean_reboot(self):
+		if self.power_state != "Running":
+			return "Machine not running"
+		else:
+			self.session.xenapi.VM.clean_reboot(self.id)
+			return 0
+
+	def clean_shutdown(self):
+		if self.power_state != "Running":
+			return "Machine not running"
+		else:
+			self.session.xenapi.VM.clean_shutdown(self.id)
+			return 0
+
+
 
