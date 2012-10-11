@@ -38,30 +38,44 @@ session = None
 def error(message):
 	# Throw message and exit
 	print "ERROR: " + str(message)
+	disconnect()
+
+def notify(message):
+	# Notify user but don't quit
+	print "NOTICE: " + str(message)
+
+def disconnect():
 	print "Logging out..."
 	session.xenapi.session.logout()
 	exit()
 
-def notify(messge):
-	# Notify user but don't quit
-	print "NOTICE: " + str(message)
-
 # Right, let's get down to the main class...
 class virtual_machine:
 	def __init__(self, name):
-		# We set the name on initialisation
+		# We only set the name on initialisation
 		self.name = name
 
 		# Get the ID from the name
-		self.id = self.read_id()
+		#self.id = self.read_id() 	# Don't do this in the constructor any more because we need to be able to test whether the
+									# machine exists before we do something that throws an error
 
 		# Get the rest of the attributes we need
-		self.read_from_xen()
+		# self.read_from_xen()
 
 	#### Setting and Getting methods ###
 	# "setting" methods simply take input and set the value in the class and Xen
 	# "getting" methods return the current value
 	# "read" methods get the current settings from Xen or CSV and set them in the class, they do not set them anywhere
+
+	def dump_attrs(self):
+		# For debugging, must be a built-in way to do this but I'm not familiar enough with Python yet...
+		print "name: " + self.name
+		print "id: " + self.id
+		print "power_state: " + self.power_state
+		print "ha_restart_priority: " + self.ha_restart_priority
+		print "start_delay: " + self.start_delay
+		print "order: " + self.order
+		return 0
 
 	def set_name(self, name):
 		# Simple class to set the name (we don't write this back to Xen, only use it for input)
@@ -71,20 +85,26 @@ class virtual_machine:
 	def read_id(self):
 		# Function to get the machine ID from Xen based on the name. Names should be unique so we
 		# throw an error if there is more than 1 match.
-		ids = session.xenapi.VM.get_by_name_label(self.name)
-
-		if len(ids) > 1:
-			error("VM name has more than one match")
-			exit()
-
-		if len(ids) == 0:
-			message = "VM " + self.name + " does not exist"
+		try:
+			ids = session.xenapi.VM.get_by_name_label(self.name)
+		except:
+			message = "XenAPI threw exception trying to get ID"
 			notify(message)
 			return 1
 
-		print "Got ID for " + self.name + ": " + str(ids)
+		if len(ids) > 1:
+			# This is bad, delete the offending VM! In future we may want to continue anyway and set parameters on both for automated scenarios
+			message = "VM name \"" + self.name + "\" has more than one match!"
+			notify(message)
+			return 1
 
-		#self.id = ids[0]
+		if len(ids) == 0:
+			message = "VM \"" + self.name + "\" does not exist"
+			notify(message)
+			return 1
+
+		self.id = ids[0]
+		#print "Got ID for " + self.name + ": " + str(ids)
 		return ids[0]
 
 	def read_from_xen(self):
@@ -92,19 +112,27 @@ class virtual_machine:
 		try:
 			data = session.xenapi.VM.get_record(self.id)
 			#pp.pprint(data)
-
 		except:
-			error("Failed to read VM data from Xen cluster")
+			# If the XenAPI throws an exception, notify and return 1
+			notify("Failed to read VM data from Xen server")
+			return 1
 
-		# Now we just need to parse the values we need and set in the class. Might useful:
-		# ha_restart_priority, start_delay, power_state, ha_always_run,
-		print "Got record: "
+		# Parse the values we need and set them in the class. Might be useful:
+		# 	ha_restart_priority, start_delay, power_state, order
+
+		# Remember to add a get_ (and possibly set_) method for each field we track
+
+		print "Found VM \"" + self.name + "\":"
+
 		print " - power_state: " + str(data['power_state'])
 		self.power_state = str(data['power_state'])
+
 		print " - ha_restart_priority: " + str(data['ha_restart_priority'])
 		self.ha_restart_priority = str(data['ha_restart_priority'])
+
 		print " - start_delay: " + str(data['start_delay'])
 		self.start_delay = str(data['start_delay'])
+
 		print " - order: " + str(data['order'])
 		self.order = str(data['order'])
 
@@ -159,48 +187,62 @@ class virtual_machine:
 		return 0
 
 
-
-
-### Sequential Logic
+### Functions
 # Use a try:finally around anything which calls XenAPI to ensure we logout
 
-# try:
+def set_vm_priorities():
+	# Open CSV file for reading
+	with open (priorities_file, 'rb') as csvfile:
+		reader = csv.reader(csvfile, delimiter=' ')
+
+		# Loop over each entry
+		for row in reader:
+			#pp.pprint(row)
+			vmname = row[1]
+			order = int(row[0])		# We set as string but this should be an int for comparisons (and eliminates leading 0's)
+			priority = "restart"	# Hard-coded for now as we're not defining or computing anywhere
+
+			# Instantiate vm object
+			vm = virtual_machine(vmname)
+
+			# Check if the VM exists
+			if vm.read_id() == 1:
+				# Move on, notices should have been printed by read_id
+				continue
+			else:
+				print 'Found "' + vmname + '", getting attributes'
+				vm.read_from_xen()
+
+			# vm.dump_attrs()
+
+			# Check order and set if not what it should be
+			current_order = vm.get_order()
+
+			if int(order) != int(current_order):
+				print "Changing order on " + vmname + " from " + str(current_order) + " to " + str(order)
+				vm.set_order(str(order))
+
+### Now that the functions and classes are defined, do some work:
+
+try:
+	priorities_file = config.get('Input', 'priorities_file')
+	implants_file = config.get('Input', 'implants_file')
+except:
+	error("Failed to parse config")
+
 # Connect and auth
 xenurl = "https://" + host
-session = XenAPI.Session(xenurl)
-session.xenapi.login_with_password(username, password)
+try:
+	session = XenAPI.Session(xenurl)
+	session.xenapi.login_with_password(username, password)
+except:
+	error("Failed to connect to the Xen server")
 
-# Open CSV files for reading
-priorities_file = config.get('Input', 'priorities_file')
+#
 
-with open (priorities_file, 'rb') as csvfile:
-	reader = csv.reader(csvfile, delimiter=' ')
+set_vm_priorities()
 
-	for row in reader:
-		pp.pprint(row)
-		vmname = row[1]
-		order = int(row[0])		# We set as string but this should be an int for comparisons (and eliminates leading 0's)
-		priority = "restart"	# Hard-coded for now as we're not defining or computing anywhere
-
-		try:
-			# Instantiate vm object. This also gets the values we need from the server and sets them
-			vm = virtual_machine(vmname)
-		except:
-			error("Failed to create vm object")
-
-		print "foo: " + str(order)
-		# Check order and set if not what it should be
-		current_order = vm.get_order()
-
-		if int(order) != int(current_order):
-			print "Changing order on " + vmname + " from " + str(current_order) + " to " + str(order)
-			vm.set_order(str(order))
-
-
-# finally:
-
-print "Logging out..."
-session.xenapi.session.logout()
+disconnect()
 
 exit()
 
