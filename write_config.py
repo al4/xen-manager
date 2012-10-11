@@ -15,7 +15,7 @@ config.add_section('Input')
 # implants_file is the list of the implants with a priorities which we will calculate from
 config.set('Input', 'implants_file', 'implants.conf')
 # priorities_file is a file with VM names and priorities (this option is temporary until we can calculate from the implants_file)
-config.set('Input', 'priorities_file', 'priorities.conf')
+config.set('Input', 'vm_list', 'priorities.conf')
 
 config.add_section('HA Defaults')
 config.set('HA Defaults', 'restart_priority', "best-effort")	# Can be "best-effort", "restart", or ""
