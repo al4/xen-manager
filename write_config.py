@@ -12,13 +12,15 @@ config.set('Connection', 'username', 'root')
 config.set('Connection', 'password', '')
 
 config.add_section('Input')
+# implants_file is the list of the implants with a priorities which we will calculate from
 config.set('Input', 'implants_file', 'implants.conf')
-config.set('Input', '')
+# priorities_file is a file with VM names and priorities (this option is temporary until we can calculate from the implants_file)
+config.set('Input', 'priorities_file', 'priorities.conf')
 
 config.add_section('HA Defaults')
-config.set('HA Defaults', 'restart_priority', "")
-config.set('HA Defaults', 'start_order', "1000")
-config.set('HA Defaults', 'start_delay', "0")
+config.set('HA Defaults', 'restart_priority', "best-effort")	# Can be "best-effort", "restart", or ""
+config.set('HA Defaults', 'order', "1000")						# Numerical
+config.set('HA Defaults', 'start_delay', "0")					# Numerical
 
 with open('xen_manage.cfg', 'wb') as configfile:
 	config.write(configfile)
