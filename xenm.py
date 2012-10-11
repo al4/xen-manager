@@ -238,18 +238,8 @@ if not os.path.isfile(vm_list):
 	message = 'Config file "' + str(configfile) + '" does not exist'
 	error(message)
 
-
-
 # Call the function selected by set_default(func=)
 args.func()
-
-disconnect()
-
-exit()
-
-
-
-
 
 exit()
 

@@ -72,8 +72,7 @@ class virtual_machine:
 
 		if len(ids) == 0:
 			message = "VM \"" + self.name + "\" does not exist"
-			notify(message)
-			return 1
+			return message
 
 		self.id = ids[0]
 		#print "Got ID for " + self.name + ": " + str(ids)
