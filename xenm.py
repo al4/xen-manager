@@ -40,28 +40,12 @@ def action_list():
 		# Find a non-template VM object
 		all = myvm.session.xenapi.VM.get_all()
 		# Lists which we read from
-		vms = []
-		hosts= []
-		names= []
-		powerstates=[]
-		restart_priorities=[]
-		start_delays=[]
-		orders=[]
-
 		data=[['name_label', 'power_state', 'restart_priority', 'start_delay', 'order']]
 
 		# Build a list of VMs
 		for vm in all:
 			record = myvm.session.xenapi.VM.get_record(vm)
 			if not(record["is_a_template"]) and not(record["is_control_domain"]) and record["power_state"] == "Running":
-				vms.append(vm)
-				hosts.append(record["resident_on"])
-				names.append(record['name_label'])
-				powerstates.append(record['power_state'])
-				restart_priorities.append(record['ha_restart_priority'])
-				start_delays.append(record['start_delay'])
-				orders.append(record['order'])
-
 				data.append([record["name_label"],record["power_state"],record["ha_restart_priority"],record["start_delay"],record["order"]])
 
 		col_width = max(len(word) for row in data for word in row) + 2
@@ -71,10 +55,6 @@ def action_list():
 		# print "Name\tPower State\t"
 		# for n, p, r, s, o in zip(names, powerstates, restart_priorities, start_delays, orders):
 		# 	print '{0}\t{1}\t{2}:{3}:{4}'.format(n,p,r,s,o)
-
-
-
-
 	finally:
 		myvm.disconnect_host()
 
