@@ -39,67 +39,86 @@ def action_start():
 	# Get name from args
 	vmname = args.vmname
 
-	try:
-		# Create new VM object and connect
-		vm = virtual_machine(vmname)
-		vm.connect_host(host, username, password)
+	check_result = vm.preflight()
+	if check_result == 0:
+		try:
+			# Create new VM object and connect
+			vm = virtual_machine(vmname)
+			vm.connect_host(host, username, password)
 
-		result = vm.start()
+			result = vm.start()
 
-		if result == 0:
-			print "Start succeeded"
+			if result == 0:
+				print "Start succeeded"
+				vm.disconnect_host()
+			else:
+				error(result)
+		finally:
 			vm.disconnect_host()
-		else:
-			error(result)
-	finally:
-		vm.disconnect_host()
-
+	else:
+		return check_result
 
 def action_stop():
 	# Get name from args
 	vmname = args.vmname
 
-	try:
-		# Create new VM object and stop the VM
-		vm = virtual_machine(vmname)
-		vm.connect_host(host, username, password)
+	check_result = vm.preflight()
+	if check_result == 0:
+		try:
+			# Create new VM object and stop the VM
+			vm = virtual_machine(vmname)
+			vm.connect_host(host, username, password)
 
-		result = vm.clean_shutdown()
+			result = vm.clean_shutdown()
 
-		if result == 0:
-			print "Stop succeeded"
-		else:
-			error(result)
-	finally:
-		vm.disconnect_host()
+			if result == 0:
+				print "Stop succeeded"
+			else:
+				error(result)
+		finally:
+			vm.disconnect_host()
+	else:
+		return check_result
 
 def action_restart():
 	# Get name from args
 	vmname = args.vmname
 
-	# Create new VM object and reboot
-	vm = virtual_machine(vmname)
-	vm.connect_host(host, username, password)
+	check_result = vm.preflight()
+	if check_result == 0:
+		try:
+			# Create new VM object and reboot
+			vm = virtual_machine(vmname)
+			vm.connect_host(host, username, password)
 
-	result = vm.clean_reboot()
+			result = vm.clean_reboot()
 
-	if result == 0:
-		print "Reboot succeeded"
-		vm.disconnect_host()()
+			if result == 0:
+				print "Reboot succeeded"
+				vm.disconnect_host()()
+			else:
+				error(result)
+		finally:
+			vm.disconnect_host()
 	else:
-		error(result)
+		return check_result
+
 
 def action_remove():
 	# Get name from args
 	vmname = args.vmname
 
-	try:
-	# Create new VM object
-		vm = virtual_machine(vmname)
-		vm.connect_host(host, username, password)
+	check_result = vm.preflight()
+	if check_result == 0:
+		try:
+		# Create new VM object
+			vm = virtual_machine(vmname)
+			vm.connect_host(host, username, password)
 
-	finally:
-		vm.disconnect_host()
+		finally:
+			vm.disconnect_host()
+	else:
+		return check_result
 
 	error("not implemented yet")
 
@@ -107,13 +126,17 @@ def action_spawn():
 	# Get name from args
 	vmname = args.vmname
 
-	try:
-		# Create new VM object
-		vm = virtual_machine(vmname)
-		vm.connect_host(host, username, password)
+	check_result = vm.preflight()
+	if check_result == 0:
+		try:
+			# Create new VM object
+			vm = virtual_machine(vmname)
+			vm.connect_host(host, username, password)
 
-	finally:
-		vm.disconnect_host()
+		finally:
+			vm.disconnect_host()
+	else:
+		return check_result
 
 	error("not implemented yet")
 
@@ -121,27 +144,34 @@ def action_respawn():
 	# Get name from args
 	vmname = args.vmname
 
-	try:
-		# Create new VM object
-		vm = virtual_machine(vmname)
-		vm.connect_host(host, username, password)
+	check_result = vm.preflight()
+	if check_result == 0:
+		try:
+			# Create new VM object
+			vm = virtual_machine(vmname)
+			vm.connect_host(host, username, password)
 
-	finally:
-		vm.disconnect_host()
-
+		finally:
+			vm.disconnect_host()
+	else:
+		return check_result
 	error("not implemented yet")
 
 def action_enforce():
 	# Get name from args
 	vmname = args.vmname
 
-	try:
-		# Create new VM object
-		vm = virtual_machine(vmname)
-		vm.connect_host(host, username, password)
+	check_result = vm.preflight()
+	if check_result == 0:
+		try:
+			# Create new VM object
+			vm = virtual_machine(vmname)
+			vm.connect_host(host, username, password)
 
-	finally:
-		vm.disconnect_host()
+		finally:
+			vm.disconnect_host()
+	else:
+		return check_result
 
 	error("not implemented yet")
 
@@ -165,25 +195,21 @@ def action_enforce_all():
 				vm = virtual_machine(vmname)
 				vm.connect_host(host, username, password)
 
+				# Check if the VM exists
+				check_result = vm.preflight()
+				if check_result != 0:
+					notify(check_result)
+					# stop this iteration if we can't find the VM
+					continue
+
+				# Check order and set if it is not what it should be
+				current_order = vm.get_order()
+
+				if int(order) != int(current_order):
+					print "Changing order on " + vmname + " from " + str(current_order) + " to " + str(order)
+					vm.set_order(str(order))
 			finally:
 				vm.disconnect_host()
-
-			# Check if the VM exists
-			if vm.read_id() == 1:
-				# Move on to next loop iteration, notices should have been printed by vm.read_id
-				continue
-
-			print 'Found "' + vmname + '", getting attributes'
-			vm.read_from_xen()
-
-			# vm.dump_attrs()
-
-			# Check order and set if not what it should be
-			current_order = vm.get_order()
-
-			if int(order) != int(current_order):
-				print "Changing order on " + vmname + " from " + str(current_order) + " to " + str(order)
-				vm.set_order(str(order))
 
 ### Now that the functions are defined, do some work
 

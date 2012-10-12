@@ -50,6 +50,22 @@ class virtual_machine:
 		print "order: " + self.order
 		return 0
 
+	def preflight(self):
+		# Check we have a session
+		if not hasattr(self, 'session'):
+			self.disconnect_host()
+			return "No connection to Xen server! \nThis is probably a programming error, call connect_host(host, username, password) before doing a preflight."
+
+		# Check this VM exists
+		if self.read_id() == 1:
+			# couldn't find ID
+			message="VM does not exist"
+			return message
+
+		# read_from_xen will return 0 on success, which we pass straight through
+		return self.read_from_xen()
+
+
 	def set_name(self, name):
 		# Simple class to set the name (we don't write this back to Xen, only use it for input)
 		self.name = name
@@ -58,7 +74,7 @@ class virtual_machine:
 	def read_id(self):
 		# Function to get the machine ID from Xen based on the name. Names should be unique so we
 		# throw an error if there is more than 1 match.
-
+		# This is called by preflight() so has to handle its own error cases
 		try:
 			ids = self.session.xenapi.VM.get_by_name_label(self.name)
 		except:
@@ -86,7 +102,7 @@ class virtual_machine:
 			data = self.session.xenapi.VM.get_record(self.id)
 			#pp.pprint(data)
 		except:
-			return "Failed to read VM data from Xen server"
+			return 'Failed to read VM attributes for ' + self.name
 
 		# Parse the values we need and set them in the class. Might be useful:
 		# 	ha_restart_priority, start_delay, power_state, order
@@ -112,16 +128,17 @@ class virtual_machine:
 	def set_order(self, order):
 		self.order = order
 		print "Setting order for " + self.name + " to " + str(order)
-		session.xenapi.VM.set_order(self.id, str(order))
+		self.session.xenapi.VM.set_order(self.id, str(order))
 
 	def get_order(self):
 		return self.order
 
 	def set_ha_restart_priority(self, priority):
 		# Sets the priority. Can be "best-effort", "restart", or ""
+
 		self.ha_restart_priority = priority
 		print "Setting ha_restart_priority to " + str(priority)
-		session.xenapi.VM.set_ha_restart_priority(self.id, "restart")
+		self.session.xenapi.VM.set_ha_restart_priority(self.id, "restart")
 		return 0
 
 	def get_ha_restart_priotiry(self):
@@ -129,9 +146,10 @@ class virtual_machine:
 
 	def set_start_delay(self, start_delay):
 		# set the delay attribute
+
 		self.start_delay = start_delay
 		print "Setting start_delay for " + self.name + " to " + str(start_delay)
-		session.xenapi.VM.set_start_delay(self.id, str(start_delay))	# <- documentation says int but you get FIELD_TYPE_ERROR if you pass an integer here, happy when converted to str
+		self.session.xenapi.VM.set_start_delay(self.id, str(start_delay))	# <- documentation says int but you get FIELD_TYPE_ERROR if you pass an integer here, happy when converted to str
 		return self.start_delay
 
 	def get_start_delay(self):
@@ -157,21 +175,6 @@ class virtual_machine:
 		# get the implant from DNS TXT record
 		return 0
 
-	def preflight(self):
-		# Check we have a session
-		if not hasattr(self, 'session'):
-			self.disconnect_host()
-			return "No connection to Xen server! \nThis is probably a programming error, call connect_host(host, username, password) before doing a preflight."
-
-		# Check this VM exists
-		if self.read_id() == 1:
-			# couldn't find ID
-			message="VM does not exist"
-			return message
-
-		# read_from_xen will return 0 on success, which we pass straight through
-		return self.read_from_xen()
-
 	# Actions we can perform
 	# Named to be consistent with the functions in the Xen API
 
@@ -179,42 +182,30 @@ class virtual_machine:
 		return 0
 
 	def start(self):
-		check_result = self.preflight()
-		if check_result == 0:
-			# Extra check to ensure the VM is running
-			if self.power_state == "Running":
-				return "Machine is already running"
-			else:
-				# Need more robust checking, wouldn't know if Xen returned an error
-				self.session.xenapi.VM.start(self.id, False, False)
-				return 0
+		# Extra check to ensure the VM is running
+		if self.power_state == "Running":
+			return "Machine is already running"
 		else:
-			return check_result
+			# Need more robust checking, wouldn't know if Xen returned an error
+			self.session.xenapi.VM.start(self.id, False, False)
+			return 0
 
 	def clean_reboot(self):
-		check_result = self.preflight()
-		if check_result == 0:
-			# Extra check to ensure the VM is not running
-			if self.power_state != "Running":
-				return "Machine not running"
-			else:
-				# Need more robust checking, wouldn't know if Xen returned an error
-				self.session.xenapi.VM.clean_reboot(self.id)
-				return 0
+		# Extra check to ensure the VM is not running
+		if self.power_state != "Running":
+			return "Machine not running"
 		else:
-			return check_result
+			# Need more robust checking, wouldn't know if Xen returned an error
+			self.session.xenapi.VM.clean_reboot(self.id)
+			return 0
 
 	def clean_shutdown(self):
-		check_result = self.preflight()
-		if check_result == 0:
-			if self.power_state != "Running":
-				return "Machine not running"
-			else:
-				# Need more robust checking, wouldn't know if Xen returned an error
-				self.session.xenapi.VM.clean_shutdown(self.id)
-				return 0
+		if self.power_state != "Running":
+			return "Machine not running"
 		else:
-			return check_result
+			# Need more robust checking, wouldn't know if Xen returned an error
+			self.session.xenapi.VM.clean_shutdown(self.id)
+			return 0
 
 	#def
 
