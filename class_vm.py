@@ -175,7 +175,7 @@ class virtual_machine:
 
 	def start(self):
 		check_result = self.preflight()
-		if check == 0:
+		if check_result == 0:
 			# Extra check to ensure the VM is running
 			if self.power_state == "Running":
 				return "Machine is already running"
@@ -187,7 +187,7 @@ class virtual_machine:
 
 	def clean_reboot(self):
 		check_result = self.preflight()
-		if check == 0:
+		if check_result == 0:
 			# Extra check to ensure the VM is not running
 			if self.power_state != "Running":
 				return "Machine not running"
@@ -199,7 +199,7 @@ class virtual_machine:
 
 	def clean_shutdown(self):
 		check_result = self.preflight()
-		if check == 0:
+		if check_result == 0:
 			if self.power_state != "Running":
 				return "Machine not running"
 			else:
@@ -207,5 +207,6 @@ class virtual_machine:
 				return 0
 		else:
 			return check_result
-	def
+
+	#def
 

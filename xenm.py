@@ -56,7 +56,7 @@ def action_stop():
 	result = vm.clean_shutdown()
 
 	if result == 0:
-		print "Reboot succeeded"
+		print "Stop succeeded"
 	else:
 		error(result)
 
