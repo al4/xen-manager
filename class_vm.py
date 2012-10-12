@@ -84,7 +84,6 @@ class virtual_machine:
 			data = self.session.xenapi.VM.get_record(self.id)
 			#pp.pprint(data)
 		except:
-			# If the XenAPI throws an exception, notify and return 1
 			return "Failed to read VM data from Xen server"
 
 		# Parse the values we need and set them in the class. Might be useful:
@@ -156,29 +155,57 @@ class virtual_machine:
 		# get the implant from DNS TXT record
 		return 0
 
+	def preflight(self):
+		# Pre-flight check to make sure this VM exists
+		if self.read_id() == 1:
+			# couldn't find ID
+			message="VM does not exist"
+			return message
+
+		# read_from_xen will return 0 on success, which we pass straight through
+		return self.read_from_xen()
 
 
-	# Actions
+
+	# Actions we can perform
+	# Named to be consistent with the functions in the Xen API
+
+	def list(self):
+		return 0
+
 	def start(self):
-		if self.power_state == "Running":
-			return "Machine is already running"
+		check_result = self.preflight()
+		if check == 0:
+			# Extra check to ensure the VM is running
+			if self.power_state == "Running":
+				return "Machine is already running"
+			else:
+				self.session.xenapi.VM.start(self.id, False, False)
+				return 0
 		else:
-			self.session.xenapi.VM.start(self.id, False, False)
-			return 0
+			return check_result
 
 	def clean_reboot(self):
-		if self.power_state != "Running":
-			return "Machine not running"
+		check_result = self.preflight()
+		if check == 0:
+			# Extra check to ensure the VM is not running
+			if self.power_state != "Running":
+				return "Machine not running"
+			else:
+				self.session.xenapi.VM.clean_reboot(self.id)
+				return 0
 		else:
-			self.session.xenapi.VM.clean_reboot(self.id)
-			return 0
+			return check_result
 
 	def clean_shutdown(self):
-		if self.power_state != "Running":
-			return "Machine not running"
+		check_result = self.preflight()
+		if check == 0:
+			if self.power_state != "Running":
+				return "Machine not running"
+			else:
+				self.session.xenapi.VM.clean_shutdown(self.id)
+				return 0
 		else:
-			self.session.xenapi.VM.clean_shutdown(self.id)
-			return 0
-
-
+			return check_result
+	def
 

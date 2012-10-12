@@ -36,19 +36,11 @@ def action_list():
 	error(message)
 
 def action_start():
-	# Check VM is running
+	# Create new VM object and connect
 	vm = virtual_machine(vmname)
 	vm.connect_host(host, username, password)
-	myid = vm.read_id()
 
-	if myid == 1:
-		# does not exist
-		message="VM does not exist"
-		error(message)
-	else:
-		print myid
-
-	vm.read_from_xen()
+	# start the VM
 	result = vm.start()
 
 	if result == 0:
@@ -57,19 +49,10 @@ def action_start():
 		error(result)
 
 def action_stop():
-	# Check VM is running
+	# Create new VM object and stop the VM
 	vm = virtual_machine(vmname)
 	vm.connect_host(host, username, password)
-	myid = vm.read_id()
 
-	if myid == 1:
-		# does not exist
-		message="VM does not exist"
-		error(message)
-	else:
-		print myid
-
-	vm.read_from_xen()
 	result = vm.clean_shutdown()
 
 	if result == 0:
@@ -80,14 +63,6 @@ def action_stop():
 def action_restart():
 	# Check VM is running
 	vm = virtual_machine(vmname)
-	if vm.read_id == 1:
-		# does not exist
-		message="VM does not exist"
-		error(message)
-
-	var = vm.read_from_xen()
-	if var != 0:
-		error("failed to read data from Xen")
 
 	result = vm.clean_reboot()
 
@@ -95,7 +70,6 @@ def action_restart():
 		print "Reboot succeeded"
 	else:
 		error(result)
-	print "BLAHASDKLHASD"
 
 def action_remove():
 	message="not implemented yet"
@@ -147,16 +121,17 @@ def action_enforce_all():
 				print "Changing order on " + vmname + " from " + str(current_order) + " to " + str(order)
 				vm.set_order(str(order))
 
-### Now that the functions and classes are defined, do some work
+### Now that the functions are defined, do some work
 
 # First we need to parse the commandline arguments. We use Python's argparse.
+
 parser = argparse.ArgumentParser(description='Manages our Xen cluster', add_help=False)
 # parser.add_argument('action', help="action to perform")
 parser.add_argument("--password", "-p", help="root password for Xen Server (uses config if not set)")
 parser.add_argument("--configfile", "-c", help="config file to use (xenm.cfg by default)")
 parser.add_argument('--host', help='Xen server host to connect to (must be the master of the cluster)')
 
-# Default options. Reasonable to guess config file but host should be explicit in config or as argument
+# Default options. It is reasonable to guess configfile, but host should be explicit in config or as argument
 parser.set_defaults(configfile='xenm.cfg', host=None, password=None)
 
 # We setup subparsers for each mode
@@ -211,15 +186,14 @@ else:
 	error(message)
 
 host = config.get('Connection', 'host')
-username = config.get('Connection', 'username') 	# Our license doesn't have user management so always need to auth as root. Can easily add as an argument later.
+username = config.get('Connection', 'username')
 password = config.get('Connection', 'password')
 vmname = args.vmname
 
 # Override if set on command line
 if args.host != None:
 	host = args.host
-
-if args.password:
+if args.password != None:
 	password = args.password
 
 # Get defaults (not sure if we'll use these):
@@ -235,7 +209,7 @@ except:
 
 # Check the files specified are present
 if not os.path.isfile(vm_list):
-	message = 'Config file "' + str(configfile) + '" does not exist'
+	message = 'File "' + str(vm_list) + '" does not exist'
 	error(message)
 
 # Call the function selected by set_default(func=)
