@@ -3,12 +3,13 @@ import XenAPI
 # Right, let's get down to the main class...
 class virtual_machine:
 	def __init__(self, name):
-		# We only set the name on initialisation
+		# We only set the name on instantiation
 		self.name = name
 
 		# Get the ID from the name
-		#self.id = self.read_id() 	# Don't do this in the constructor any more because we need to be able to test whether the
-									# machine exists before we do something that throws an error
+		#self.id = self.read_id() 	# Don't do this in the constructor any more because we need to be
+									# able to test whether the machine exists before we do something
+									# that throws an error
 
 		# Get the rest of the attributes we need
 		# self.read_from_xen()
@@ -156,7 +157,12 @@ class virtual_machine:
 		return 0
 
 	def preflight(self):
-		# Pre-flight check to make sure this VM exists
+		# Check we have a session
+		if not hasattr(self, 'session'):
+			self.disconnect_host()
+			return "No connection to Xen server! \nThis is probably a programming error, call connect_host(host, username, password) before doing a preflight."
+
+		# Check this VM exists
 		if self.read_id() == 1:
 			# couldn't find ID
 			message="VM does not exist"
@@ -164,8 +170,6 @@ class virtual_machine:
 
 		# read_from_xen will return 0 on success, which we pass straight through
 		return self.read_from_xen()
-
-
 
 	# Actions we can perform
 	# Named to be consistent with the functions in the Xen API

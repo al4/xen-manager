@@ -32,60 +32,128 @@ def disconnect():
 
 ### Functions for the sub-commands
 def action_list():
-	message= "not implemented yet"
-	error(message)
+	# Get name from args
+	vmname = args.vmname
+
+	try:
+	# Create new VM object
+		vm = virtual_machine(vmname)
+		vm.connect_host(host, username, password)
+
+	finally:
+		vm.disconnect_host()
+
+	error("not implemented yet")
 
 def action_start():
-	# Create new VM object and connect
-	vm = virtual_machine(vmname)
-	vm.connect_host(host, username, password)
+	# Get name from args
+	vmname = args.vmname
 
-	# start the VM
-	result = vm.start()
+	try:
+		# Create new VM object and connect
+		vm = virtual_machine(vmname)
+		vm.connect_host(host, username, password)
 
-	if result == 0:
-		print "Start succeeded"
-	else:
-		error(result)
+		result = vm.start()
+
+		if result == 0:
+			print "Start succeeded"
+			disconnect()
+		else:
+			error(result)
+	finally:
+		vm.disconnect_host()
+
 
 def action_stop():
-	# Create new VM object and stop the VM
-	vm = virtual_machine(vmname)
-	vm.connect_host(host, username, password)
+	# Get name from args
+	vmname = args.vmname
 
-	result = vm.clean_shutdown()
+	try:
+		# Create new VM object and stop the VM
+		vm = virtual_machine(vmname)
+		vm.connect_host(host, username, password)
 
-	if result == 0:
-		print "Stop succeeded"
-	else:
-		error(result)
+		result = vm.clean_shutdown()
+
+		if result == 0:
+			print "Stop succeeded"
+		else:
+			error(result)
+	finally:
+		vm.disconnect()
 
 def action_restart():
-	# Check VM is running
+	# Get name from args
+	vmname = args.vmname
+
+	# Create new VM object and reboot
 	vm = virtual_machine(vmname)
+	vm.connect_host(host, username, password)
 
 	result = vm.clean_reboot()
 
 	if result == 0:
 		print "Reboot succeeded"
+		disconnect()
 	else:
 		error(result)
 
 def action_remove():
-	message="not implemented yet"
-	error(message)
+	# Get name from args
+	vmname = args.vmname
+
+	try:
+	# Create new VM object
+		vm = virtual_machine(vmname)
+		vm.connect_host(host, username, password)
+
+	finally:
+		vm.disconnect_host()
+
+	error("not implemented yet")
 
 def action_spawn():
-	message="not implemented yet"
-	error(message)
+	# Get name from args
+	vmname = args.vmname
+
+	try:
+		# Create new VM object
+		vm = virtual_machine(vmname)
+		vm.connect_host(host, username, password)
+
+	finally:
+		vm.disconnect_host()
+
+	error("not implemented yet")
 
 def action_respawn():
-	message="not implemented yet"
-	error(message)
+	# Get name from args
+	vmname = args.vmname
+
+	try:
+		# Create new VM object
+		vm = virtual_machine(vmname)
+		vm.connect_host(host, username, password)
+
+	finally:
+		vm.disconnect_host()
+
+	error("not implemented yet")
 
 def action_enforce():
-	message="not implemented yet"
-	error(message)
+	# Get name from args
+	vmname = args.vmname
+
+	try:
+		# Create new VM object
+		vm = virtual_machine(vmname)
+		vm.connect_host(host, username, password)
+
+	finally:
+		vm.disconnect_host()
+
+	error("not implemented yet")
 
 def action_enforce_all():
 	# Enforces HA policy on all VMs.
@@ -188,7 +256,6 @@ else:
 host = config.get('Connection', 'host')
 username = config.get('Connection', 'username')
 password = config.get('Connection', 'password')
-vmname = args.vmname
 
 # Override if set on command line
 if args.host != None:
