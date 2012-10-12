@@ -11,37 +11,27 @@ pp = pprint.PrettyPrinter(indent=2) # for debugging
 
 # XenAPI doc: http://docs.vmd.citrix.com/XenServer/6.0.0/1.0/en_gb/api/
 
-# Set session to None so we can test if it's been initialised without throwing an exception
-session = None
-
-# Housekeeping functions. TODO - implement proper logging
+### Housekeeping functions. TODO - implement proper logging
 def error(message):
 	# Throw message and exit
 	print "ERROR: " + str(message)
-	disconnect()
+	# disconnect()
+	exit()
 
 def notify(message):
 	# Notify user but don't quit
 	print "NOTICE: " + str(message)
 
-def disconnect():
-	if session != None:
-		print "Logging out..."
-		session.xenapi.logout()
-	exit()
+# def disconnect():
+# 	if session != None:
+# 		print "Logging out..."
+# 		session.xenapi.logout()
+# 	exit()
 
 ### Functions for the sub-commands
 def action_list():
-	# Get name from args
-	vmname = args.vmname
+	# This function should list all virtual machines
 
-	try:
-	# Create new VM object
-		vm = virtual_machine(vmname)
-		vm.connect_host(host, username, password)
-
-	finally:
-		vm.disconnect_host()
 
 	error("not implemented yet")
 
@@ -58,7 +48,7 @@ def action_start():
 
 		if result == 0:
 			print "Start succeeded"
-			disconnect()
+			vm.disconnect_host()
 		else:
 			error(result)
 	finally:
@@ -81,7 +71,7 @@ def action_stop():
 		else:
 			error(result)
 	finally:
-		vm.disconnect()
+		vm.disconnect_host()
 
 def action_restart():
 	# Get name from args
@@ -95,7 +85,7 @@ def action_restart():
 
 	if result == 0:
 		print "Reboot succeeded"
-		disconnect()
+		vm.disconnect_host()()
 	else:
 		error(result)
 
@@ -157,6 +147,7 @@ def action_enforce():
 
 def action_enforce_all():
 	# Enforces HA policy on all VMs.
+	# This function has to do a lot of the heavy lifting itself
 
 	# Open CSV file for reading
 	with open (vm_list, 'rb') as csvfile:
@@ -169,8 +160,13 @@ def action_enforce_all():
 			order = int(row[0])		# We set as string but this should be an int for comparisons (and eliminates leading 0's)
 			priority = "restart"	# Hard-coded for now as we're not defining or computing anywhere
 
-			# Instantiate vm object
-			vm = virtual_machine(vmname)
+			try:
+				# Create new VM object
+				vm = virtual_machine(vmname)
+				vm.connect_host(host, username, password)
+
+			finally:
+				vm.disconnect_host()
 
 			# Check if the VM exists
 			if vm.read_id() == 1:

@@ -36,6 +36,7 @@ class virtual_machine:
 		return session
 
 	def disconnect_host(self):
+		print "Disconnecting..."
 		self.session.xenapi.logout()
 		return 0
 
@@ -184,6 +185,7 @@ class virtual_machine:
 			if self.power_state == "Running":
 				return "Machine is already running"
 			else:
+				# Need more robust checking, wouldn't know if Xen returned an error
 				self.session.xenapi.VM.start(self.id, False, False)
 				return 0
 		else:
@@ -196,6 +198,7 @@ class virtual_machine:
 			if self.power_state != "Running":
 				return "Machine not running"
 			else:
+				# Need more robust checking, wouldn't know if Xen returned an error
 				self.session.xenapi.VM.clean_reboot(self.id)
 				return 0
 		else:
@@ -207,6 +210,7 @@ class virtual_machine:
 			if self.power_state != "Running":
 				return "Machine not running"
 			else:
+				# Need more robust checking, wouldn't know if Xen returned an error
 				self.session.xenapi.VM.clean_shutdown(self.id)
 				return 0
 		else:
