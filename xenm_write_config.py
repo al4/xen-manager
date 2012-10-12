@@ -7,7 +7,7 @@ import ConfigParser # this is configparser in python3
 config = ConfigParser.RawConfigParser()
 
 config.add_section('Connection')
-config.set('Connection', 'host', 'xen-a01')
+config.set('Connection', 'hosts', 'xen-a01,xen-d02')
 config.set('Connection', 'username', 'root')
 config.set('Connection', 'password', '')
 

@@ -29,32 +29,109 @@ def notify(message):
 # 	exit()
 
 ### Functions for the sub-commands
+
+
 def action_list():
+	# Polls all Xen servers to gather data
+	# First instantiate a dummy virtual_machine object to get a connection
+
+	# Lists which we append to (start with headings in first row)
+	data_vms=[['name_label', 'pool', 'power_state', 'restart_priority', 'start_delay', 'order']]
+
+	for host in hosts:
+		# First instantiate a dummy virtual_machine object to get a connection
+		myvm = virtual_machine("dummy", verbose)
+		myvm.connect_host(host, username, password)
+
+		try:
+			# Get pools - ASSUMING ONLY ONE POOL PER HOST
+			pools = myvm.session.xenapi.pool.get_all()
+			if len(pools) > 1: error("Expecting only one pool on a host")
+
+			# Get the name of the pool on this host
+			pool = myvm.session.xenapi.pool.get_record(pools[0])
+			pool_name = pool["name_label"]
+
+			if verbose: print "Getting VMs from " + host + "..."
+
+			vms = myvm.session.xenapi.VM.get_all()
+
+			# Build a list of VMs that are not templates or control domains
+			for vm in vms:
+				record = myvm.session.xenapi.VM.get_record(vm)
+				if not(record["is_a_template"]) and not(record["is_control_domain"]):
+					data_vms.append([record["name_label"],pool_name,record["power_state"],record["ha_restart_priority"],record["start_delay"],record["order"]])
+		finally:
+			myvm.disconnect_host()
+
+	if verbose: print ""
+	col_width = max(len(word) for row in data_vms for word in row) + 2
+
+	for row in data_vms:
+		print "".join(word.ljust(col_width) for word in row)
+
+	return data_vms
+
+def action_list_old():
 	# This function should list all virtual machines
 
+	# Lists which we append to (start with headings in first row)
+	data_vms=[['name_label', 'power_state', 'restart_priority', 'start_delay', 'order']]
+
+	for host in hosts:
+		# First instantiate a dummy virtual_machine object to get a connection
+		myvm = virtual_machine("dummy", verbose)
+		myvm.connect_host(host, username, password)
+
+		try:
+			# Find a non-template VM object
+
+			if verbose: print "Getting VMs from " + host + "..."
+
+			all = myvm.session.xenapi.VM.get_all()
+
+			# Build a list of VMs
+			for vm in all:
+				record = myvm.session.xenapi.VM.get_record(vm)
+				if not(record["is_a_template"]) and not(record["is_control_domain"]) and record["power_state"] == "Running":
+					data_vms.append([record["name_label"],record["power_state"],record["ha_restart_priority"],record["start_delay"],record["order"]])
+		finally:
+			myvm.disconnect_host()
+
+	col_width = max(len(word) for row in data_vms for word in row) + 2
+
+	for row in data_vms:
+			print "".join(word.ljust(col_width) for word in row)
+
+def action_pools():
+	# This function should list all pools
+
 	# First instantiate a dummy virtual_machine object to get a connection
-	myvm = virtual_machine("dummy")
+	myvm = virtual_machine("dummy", verbose)
 	myvm.connect_host(host, username, password)
 
 	try:
-		# Find a non-template VM object
+		if verbose: print "Getting Pools..."
+
 		all = myvm.session.xenapi.VM.get_all()
 		# Lists which we read from
-		data=[['name_label', 'power_state', 'restart_priority', 'start_delay', 'order']]
+		data_pools=[['name_label', 'power_state', 'restart_priority', 'start_delay', 'order']]
 
 		# Build a list of VMs
+		sys.stdout.write(str("."))
+		sys.stdout.write('\n')
 		for vm in all:
 			record = myvm.session.xenapi.VM.get_record(vm)
 			if not(record["is_a_template"]) and not(record["is_control_domain"]) and record["power_state"] == "Running":
-				data.append([record["name_label"],record["power_state"],record["ha_restart_priority"],record["start_delay"],record["order"]])
+				data_pools.append([record["name_label"],record["power_state"],record["ha_restart_priority"],record["start_delay"],record["order"]])
+			sys.stdout.write(".")
+		col_width = max(len(word) for row in data_pools for word in row) + 2
 
-		col_width = max(len(word) for row in data for word in row) + 2
+		sys.stdout.write('\n')
 
-		for row in data:
+		for row in data_pools:
 			print "".join(word.ljust(col_width) for word in row)
-		# print "Name\tPower State\t"
-		# for n, p, r, s, o in zip(names, powerstates, restart_priorities, start_delays, orders):
-		# 	print '{0}\t{1}\t{2}:{3}:{4}'.format(n,p,r,s,o)
+
 	finally:
 		myvm.disconnect_host()
 
@@ -64,7 +141,7 @@ def action_start():
 
 	try:
 		# Create new VM object and connect
-		vm = virtual_machine(vmname)
+		vm = virtual_machine(vmname, verbose)
 		vm.connect_host(host, username, password)
 
 		check_result = vm.preflight()
@@ -85,7 +162,7 @@ def action_stop():
 
 	try:
 		# Create new VM object and connect
-		vm = virtual_machine(vmname)
+		vm = virtual_machine(vmname, verbose)
 		vm.connect_host(host, username, password)
 
 		check_result = vm.preflight()
@@ -106,7 +183,7 @@ def action_restart():
 
 	try:
 		# Create new VM object and connect
-		vm = virtual_machine(vmname)
+		vm = virtual_machine(vmname, verbose)
 		vm.connect_host(host, username, password)
 
 		check_result = vm.preflight()
@@ -127,7 +204,7 @@ def action_remove():
 
 	try:
 		# Create new VM object and connect
-		vm = virtual_machine(vmname)
+		vm = virtual_machine(vmname, verbose)
 		vm.connect_host(host, username, password)
 
 		check_result = vm.preflight()
@@ -146,7 +223,7 @@ def action_spawn():
 
 	try:
 		# Create new VM object and connect
-		vm = virtual_machine(vmname)
+		vm = virtual_machine(vmname, verbose)
 		vm.connect_host(host, username, password)
 
 		check_result = vm.preflight()
@@ -165,7 +242,7 @@ def action_respawn():
 
 	try:
 		# Create new VM object and connect
-		vm = virtual_machine(vmname)
+		vm = virtual_machine(vmname, verbose)
 		vm.connect_host(host, username, password)
 
 		check_result = vm.preflight()
@@ -184,7 +261,7 @@ def action_enforce():
 
 	try:
 		# Create new VM object and connect
-		vm = virtual_machine(vmname)
+		vm = virtual_machine(vmname, verbose)
 		vm.connect_host(host, username, password)
 
 		check_result = vm.preflight()
@@ -214,7 +291,7 @@ def action_enforce_all():
 
 			try:
 				# Create new VM object
-				vm = virtual_machine(vmname)
+				vm = virtual_machine(vmname, verbose)
 				vm.connect_host(host, username, password)
 
 				# Check if the VM exists
@@ -242,6 +319,7 @@ parser = argparse.ArgumentParser(description='Manages our Xen cluster', add_help
 parser.add_argument("--password", "-p", help="root password for Xen Server (uses config if not set)")
 parser.add_argument("--configfile", "-c", help="config file to use (xenm.cfg by default)")
 parser.add_argument('--host', help='Xen server host to connect to (must be the master of the cluster)')
+parser.add_argument('--verbose', '-v', action='store_true', help='print more output')
 
 # Default options. It is reasonable to guess configfile, but host should be explicit in config or as argument
 parser.set_defaults(configfile='xenm.cfg', host=None, password=None)
@@ -281,6 +359,13 @@ parser_enforce_all.set_defaults(func=action_enforce_all)
 
 args = parser.parse_args()
 
+# Set verbose mode
+if args.verbose:
+	verbose=True
+	print "Verbose on"
+else:
+	verbose=False
+
 # Get config options from xenm.cfg if not set on command line
 config = ConfigParser.RawConfigParser()
 
@@ -297,15 +382,17 @@ else:
 	message = 'Config file "' + str(configfile) + '" does not exist'
 	error(message)
 
-host = config.get('Connection', 'host')
+hosts = config.get('Connection', 'hosts').split(',')
 username = config.get('Connection', 'username')
 password = config.get('Connection', 'password')
 
 # Override if set on command line
 if args.host != None:
-	host = args.host
+	hosts = args.host.split(',')
 if args.password != None:
 	password = args.password
+
+if verbose: print 'Hosts: ' + str(hosts)
 
 # Get defaults (not sure if we'll use these):
 default_ha_restart_priority = config.get('HA Defaults', 'restart_priority')

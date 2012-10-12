@@ -2,10 +2,10 @@ import XenAPI
 
 # Right, let's get down to the main class...
 class virtual_machine:
-	def __init__(self, name):
+	def __init__(self, name, verbose=False):
 		# We only set the name on instantiation
 		self.name = name
-
+		self.verbose = verbose
 		# Get the ID from the name
 		#self.id = self.read_id() 	# Don't do this in the constructor any more because we need to be
 									# able to test whether the machine exists before we do something
@@ -22,7 +22,7 @@ class virtual_machine:
 	def connect_host(self, host, username, password):
 		# Connect and auth
 		xenurl = "https://" + host
-		print "Connecting to Xen Server..."
+		if self.verbose: print "Connecting to Xen Server..."
 		# try:
 		session = XenAPI.Session(xenurl)
 		session.xenapi.login_with_password(username, password)
@@ -36,7 +36,7 @@ class virtual_machine:
 		return session
 
 	def disconnect_host(self):
-		print "Disconnecting..."
+		if self.verbose: print "Disconnecting..."
 		self.session.xenapi.logout()
 		return 0
 
@@ -109,25 +109,25 @@ class virtual_machine:
 
 		# Remember to add a get_ (and possibly set_) method for each field we track
 
-		print "Found VM \"" + self.name + "\":"
+		if self.verbose: print "Found VM \"" + self.name + "\":"
 
-		print " - power_state: " + str(data['power_state'])
+		if self.verbose: print " - power_state: " + str(data['power_state'])
 		self.power_state = str(data['power_state'])
 
-		print " - ha_restart_priority: " + str(data['ha_restart_priority'])
+		if self.verbose: print " - ha_restart_priority: " + str(data['ha_restart_priority'])
 		self.ha_restart_priority = str(data['ha_restart_priority'])
 
-		print " - start_delay: " + str(data['start_delay'])
+		if self.verbose: print " - start_delay: " + str(data['start_delay'])
 		self.start_delay = str(data['start_delay'])
 
-		print " - order: " + str(data['order'])
+		if self.verbose: print " - order: " + str(data['order'])
 		self.order = str(data['order'])
 
 		return 0
 
 	def set_order(self, order):
 		self.order = order
-		print "Setting order for " + self.name + " to " + str(order)
+		if self.verbose: print "Setting order for " + self.name + " to " + str(order)
 		self.session.xenapi.VM.set_order(self.id, str(order))
 
 	def get_order(self):
@@ -137,7 +137,7 @@ class virtual_machine:
 		# Sets the priority. Can be "best-effort", "restart", or ""
 
 		self.ha_restart_priority = priority
-		print "Setting ha_restart_priority to " + str(priority)
+		if self.verbose: print "Setting ha_restart_priority to " + str(priority)
 		self.session.xenapi.VM.set_ha_restart_priority(self.id, "restart")
 		return 0
 
@@ -148,7 +148,7 @@ class virtual_machine:
 		# set the delay attribute
 
 		self.start_delay = start_delay
-		print "Setting start_delay for " + self.name + " to " + str(start_delay)
+		if self.verbose: print "Setting start_delay for " + self.name + " to " + str(start_delay)
 		self.session.xenapi.VM.set_start_delay(self.id, str(start_delay))	# <- documentation says int but you get FIELD_TYPE_ERROR if you pass an integer here, happy when converted to str
 		return self.start_delay
 
