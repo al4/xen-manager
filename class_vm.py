@@ -21,8 +21,8 @@ class virtual_machine:
 
 	def connect_host(self, host, username, password):
 		# Connect and auth
-		xenurl = "https://" + host
-		if self.verbose: print "Connecting to Xen Server..."
+		xenurl = "https://" + str(host)
+		# if self.verbose: print "Connecting to " + str(host) + "..."
 		# try:
 		session = XenAPI.Session(xenurl)
 		session.xenapi.login_with_password(username, password)
@@ -36,7 +36,7 @@ class virtual_machine:
 		return session
 
 	def disconnect_host(self):
-		if self.verbose: print "Disconnecting..."
+		# if self.verbose: print "Disconnecting..."
 		self.session.xenapi.logout()
 		return 0
 
@@ -54,15 +54,16 @@ class virtual_machine:
 		# Check we have a session
 		if not hasattr(self, 'session'):
 			self.disconnect_host()
-			return "No connection to Xen server! \nThis is probably a programming error, call connect_host(host, username, password) before doing a preflight."
+			print "No connection to Xen server! \nThis is probably a programming error, call connect_host(host, username, password) before doing a preflight."
+			return 1
 
 		# Check this VM exists
 		if self.read_id() == 1:
 			# couldn't find ID
-			message="VM does not exist"
-			return message
+			return 1
 
 		# read_from_xen will return 0 on success, which we pass straight through
+		# Should this return the power_state?
 		return self.read_from_xen()
 
 
@@ -79,18 +80,19 @@ class virtual_machine:
 			ids = self.session.xenapi.VM.get_by_name_label(self.name)
 		except:
 			message = "XenAPI threw exception trying to get ID"
-			return message
+			print message
+			self.disconnect_host()
 
 		if len(ids) > 1:
 			# This is bad, delete the offending VM! In future we may want to continue anyway and set parameters on both
 			# for automated scenarios
 			message = "VM name \"" + self.name + "\" has more than one match!"
-			notify(message)
-			return 1
+			if self.verbose: print message
+			return 2
 
 		if len(ids) == 0:
-			message = "VM \"" + self.name + "\" does not exist"
-			return message
+			# No result
+			return 1
 
 		self.id = ids[0]
 		#print "Got ID for " + self.name + ": " + str(ids)
@@ -102,26 +104,24 @@ class virtual_machine:
 			data = self.session.xenapi.VM.get_record(self.id)
 			#pp.pprint(data)
 		except:
-			return 'Failed to read VM attributes for ' + self.name
+			print 'Failed to read VM attributes for ' + self.name
+			return 1
 
 		# Parse the values we need and set them in the class. Might be useful:
 		# 	ha_restart_priority, start_delay, power_state, order
 
 		# Remember to add a get_ (and possibly set_) method for each field we track
 
-		if self.verbose: print "Found VM \"" + self.name + "\":"
-
-		if self.verbose: print " - power_state: " + str(data['power_state'])
 		self.power_state = str(data['power_state'])
-
-		if self.verbose: print " - ha_restart_priority: " + str(data['ha_restart_priority'])
 		self.ha_restart_priority = str(data['ha_restart_priority'])
-
-		if self.verbose: print " - start_delay: " + str(data['start_delay'])
 		self.start_delay = str(data['start_delay'])
-
-		if self.verbose: print " - order: " + str(data['order'])
 		self.order = str(data['order'])
+
+		# if self.verbose: print "Found VM \"" + self.name + "\":"
+		# if self.verbose: print " - power_state: " + str(data['power_state'])
+		# if self.verbose: print " - ha_restart_priority: " + str(data['ha_restart_priority'])
+		# if self.verbose: print " - start_delay: " + str(data['start_delay'])
+		# if self.verbose: print " - order: " + str(data['order'])
 
 		return 0
 
@@ -182,7 +182,6 @@ class virtual_machine:
 		return 0
 
 	def start(self):
-		# Extra check to ensure the VM is running
 		if self.power_state == "Running":
 			return "Machine is already running"
 		else:
@@ -193,7 +192,7 @@ class virtual_machine:
 	def clean_reboot(self):
 		# Extra check to ensure the VM is not running
 		if self.power_state != "Running":
-			return "Machine not running"
+			return 1
 		else:
 			# Need more robust checking, wouldn't know if Xen returned an error
 			self.session.xenapi.VM.clean_reboot(self.id)
@@ -201,11 +200,26 @@ class virtual_machine:
 
 	def clean_shutdown(self):
 		if self.power_state != "Running":
-			return "Machine not running"
+			return 1
 		else:
 			# Need more robust checking, wouldn't know if Xen returned an error
 			self.session.xenapi.VM.clean_shutdown(self.id)
 			return 0
 
-	#def
+	def clone(self, template):
+		# template is a vm reference
+		self.session.xenapi.VM.clone(template, self.name)
+		self.session.xenapi.VM.is_a_template = False
+
+	def get_template_status(self):
+		return self.session.xenapi.VM.get_is_a_template(self.id)
+
+	def set_template_status(self, status):
+		# Requires a boolean status to be passed
+		return self.session.xenapi.VM.set_is_a_template(self.id, status)
+
+	def destroy(self):
+		# Destroys the VM
+		return self.session.xenapi.VM.destroy(self.id)
+
 
