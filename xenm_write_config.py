@@ -7,7 +7,7 @@ import ConfigParser # this is configparser in python3
 config = ConfigParser.RawConfigParser()
 
 config.add_section('Connection')
-config.set('Connection', 'hosts', 'xen-a01,xen-d02')
+config.set('Connection', 'hosts', 'xen-a01,xen-d01,xen-d02,xen-d09')
 config.set('Connection', 'username', 'root')
 config.set('Connection', 'password', '')
 
@@ -15,7 +15,7 @@ config.add_section('Input')
 # implants_file is the list of the implants with a priorities which we will calculate from
 config.set('Input', 'implants_file', 'implants.conf')
 # priorities_file is a file with VM names and priorities (this option is temporary until we can calculate from the implants_file)
-config.set('Input', 'vm_list', 'priorities.conf')
+config.set('Input', 'vmlist', 'priorities.conf')
 # the template we clone from
 config.set('Input', 'template', 'replicant-')
 

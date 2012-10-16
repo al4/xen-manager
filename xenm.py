@@ -346,7 +346,7 @@ def set_ha_properties(vm):
 	print "Setting HA priorities..."
 	count = 0
 
-	with open(vm_list, 'rb') as csvfile:
+	with open(vmlist, 'rb') as csvfile:
 		reader = csv.reader(csvfile, delimiter=' ')
 
 		for row in reader:
@@ -368,7 +368,7 @@ def set_ha_properties(vm):
 			else:
 				continue
 		if count == 0:
-			"Did not find entry for" + vm.name + " in " + vm_list + ", skipping ha config"
+			"Did not find entry for" + vm.name + " in " + vmlist + ", skipping ha config"
 
 def action_enforce_all():
 	global host
@@ -376,7 +376,7 @@ def action_enforce_all():
 	# This function has to do a lot of the heavy lifting itself
 
 	# Open CSV file for reading
-	with open (vm_list, 'rb') as csvfile:
+	with open (vmlist, 'rb') as csvfile:
 		reader = csv.reader(csvfile, delimiter=' ')
 
 		count = 0
@@ -456,8 +456,6 @@ def get_host(vm_name):
 		return host_list[0]
 	return 0
 
-### Now that the functions are defined, do some work
-
 # First we need to parse the commandline arguments. We use Python's argparse.
 parser = argparse.ArgumentParser(description='Manages our Xen cluster', add_help=False)
 
@@ -483,16 +481,21 @@ parent_parser_multivm = argparse.ArgumentParser(add_help=False)
 parent_parser_multivm.add_argument('--vmlist', help='CSV file with a list of VMs and priorities')
 parent_parser_multivm.set_defaults(vmlist=None)
 
+# Parent for any option that uses a template
+parent_parser_template = argparse.ArgumentParser(add_help=False)
+parent_parser_template.add_argument('--template', '-t', help='name of template to use')
+parent_parser_template.set_defaults(template=None)
+
 # The subparsers, which should include one of the parents above
 parser_start = subparsers.add_parser('list', help='list all VMs')
 parser_start = subparsers.add_parser('list-pools', help='list all pools')
 parser_start = subparsers.add_parser('start', help='starts a VM', parents=[parent_parser_onevm])
 parser_stop = subparsers.add_parser('stop', help='performs a clean shutdown', parents=[parent_parser_onevm])
-parser_stop = subparsers.add_parser('status', help='shows the status of a VM', parents=[parent_parser_onevm])
+parser_status = subparsers.add_parser('status', help='shows the status of a VM', parents=[parent_parser_onevm])
 parser_restart = subparsers.add_parser('restart', help='performs a clean reboot', parents=[parent_parser_onevm])
 parser_remove = subparsers.add_parser('remove', help='removes a VM', parents=[parent_parser_onevm])
-parser_spawn = subparsers.add_parser('spawn', help='spawns a new VM', parents=[parent_parser_onevm])
-parser_respawn = subparsers.add_parser('respawn', help='removes and spawns a new copy of a VM', parents=[parent_parser_onevm])
+parser_spawn = subparsers.add_parser('spawn', help='spawns a new VM', parents=[parent_parser_onevm, parent_parser_template])
+parser_respawn = subparsers.add_parser('respawn', help='removes and spawns a new copy of a VM', parents=[parent_parser_onevm, parent_parser_template])
 parser_enforce = subparsers.add_parser('enforce', help='enforce the HA policy on one VM', parents=[parent_parser_onevm])
 parser_enforce_all = subparsers.add_parser('enforce-all', help='check the HA policy on all VMs and enforce the policy (config must be set)', parents=[parent_parser_multivm])
 
@@ -501,7 +504,7 @@ parser_start.set_defaults(func=action_list)
 parser_start.set_defaults(func=action_pools)
 parser_start.set_defaults(func=action_start)
 parser_stop.set_defaults(func=action_stop)
-parser_stop.set_defaults(func=action_status)
+parser_status.set_defaults(func=action_status)
 parser_restart.set_defaults(func=action_restart)
 parser_remove.set_defaults(func=action_remove)
 parser_spawn.set_defaults(func=action_spawn)
@@ -534,16 +537,21 @@ else:
 	message = 'Config file "' + str(configfile) + '" does not exist'
 	error(message)
 
+# Get config options
 hosts = config.get('Connection', 'hosts').split(',')
 username = config.get('Connection', 'username')
 password = config.get('Connection', 'password')
 template = config.get('Input', 'template')
+vmlist = config.get('Input', 'vmlist')
+implants_file = config.get('Input', 'implants_file')
 
-# Override if set on command line
+# Override config if set on command line
 if args.host != None:
 	hosts = args.host.split(',')
 if args.password != None:
 	password = args.password
+# if args.template != None:
+# 	template = args.template
 
 if verbose: print 'Hosts: ' + str(hosts)
 
@@ -552,16 +560,12 @@ default_ha_restart_priority = config.get('HA Defaults', 'restart_priority')
 default_order = config.get('HA Defaults', 'order')
 default_start_delay = config.get('HA Defaults', 'start_delay')
 
-try:
-	vm_list = config.get('Input', 'vm_list')
-	implants_file = config.get('Input', 'implants_file')
-except:
-	error("Failed to parse config")
-
 # Check the files specified are present
-if not os.path.isfile(vm_list):
-	message = 'File "' + str(vm_list) + '" does not exist'
+if not os.path.isfile(vmlist):
+	message = 'File "' + str(vmlist) + '" does not exist'
 	error(message)
+
+print vars(args)
 
 # Call the function selected by set_default(func=)
 result = args.func()
@@ -569,8 +573,6 @@ result = args.func()
 # Analyse what is returned
 if result == 1:
 	error("function returned error code")
-
-
 
 exit()
 
