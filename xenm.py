@@ -565,6 +565,7 @@ if not os.path.isfile(vmlist):
 	message = 'File "' + str(vmlist) + '" does not exist'
 	error(message)
 
+# Debug line to dump out command line args
 print vars(args)
 
 # Call the function selected by set_default(func=)
