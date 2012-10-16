@@ -462,11 +462,11 @@ parser = argparse.ArgumentParser(description='Manages our Xen cluster', add_help
 # parser.add_argument('action', help="action to perform")
 parser.add_argument("--password", "-p", help="root password for Xen Server (uses config if not set)")
 parser.add_argument("--configfile", "-c", help="config file to use (xenm.cfg by default)")
-parser.add_argument('--host', help='Xen server host to connect to (must be the master of the cluster)')
+parser.add_argument('--hosts', help='Xen host(s) to connect to. These hosts must be the master of their cluster. Separate multiple hosts with commas.')
 parser.add_argument('--verbose', '-v', action='store_true', help='print more output')
 
 # Default options. It is reasonable to guess configfile, but host should be explicit in config or as argument
-parser.set_defaults(configfile='xenm.cfg', host=None, password=None)
+parser.set_defaults(configfile='xenm.cfg', hosts=None)
 
 # We setup subparsers for each mode
 subparsers = parser.add_subparsers(dest='action')
@@ -474,17 +474,17 @@ subparsers = parser.add_subparsers(dest='action')
 # Parent parser for modes which operate on a single VM
 parent_parser_onevm = argparse.ArgumentParser(add_help=False)
 parent_parser_onevm.add_argument('vmname', help='name of VM to perform action on')
-parent_parser_onevm.set_defaults(vmname=None)
+# parent_parser_onevm.set_defaults(vmname=None)
 
 # Parent for modes which operate on multiple VMs
 parent_parser_multivm = argparse.ArgumentParser(add_help=False)
 parent_parser_multivm.add_argument('--vmlist', help='CSV file with a list of VMs and priorities')
-parent_parser_multivm.set_defaults(vmlist=None)
+# parent_parser_multivm.set_defaults(vmlist=None)
 
 # Parent for any option that uses a template
 parent_parser_template = argparse.ArgumentParser(add_help=False)
 parent_parser_template.add_argument('--template', '-t', help='name of template to use')
-parent_parser_template.set_defaults(template=None)
+# parent_parser_template.set_defaults(template=None)
 
 # The subparsers, which should include one of the parents above
 parser_start = subparsers.add_parser('list', help='list all VMs')
@@ -514,7 +514,7 @@ parser_enforce_all.set_defaults(func=action_enforce_all)
 
 args = parser.parse_args()
 
-# Set verbose mode
+# Set verbose mode. args.verbose is set by action='store_true' option in parser.
 if args.verbose:
 	verbose=True
 	print "Verbose on"
@@ -546,12 +546,14 @@ vmlist = config.get('Input', 'vmlist')
 implants_file = config.get('Input', 'implants_file')
 
 # Override config if set on command line
-if args.host != None:
-	hosts = args.host.split(',')
-if args.password != None:
+if args.hosts != None: # args.hosts is a list and and hasattr requires a string for some reason! So the default must be set above
+	hosts = args.hosts.split(',')
+if hasattr(args,password):
 	password = args.password
-# if args.template != None:
-# 	template = args.template
+if hasattr(args, template):
+ 	template = args.template
+if hasattr(args, vmlist):
+	vllist = args.vmlist
 
 if verbose: print 'Hosts: ' + str(hosts)
 
@@ -566,7 +568,7 @@ if not os.path.isfile(vmlist):
 	error(message)
 
 # Debug line to dump out command line args
-print vars(args)
+# print vars(args)
 
 # Call the function selected by set_default(func=)
 result = args.func()
