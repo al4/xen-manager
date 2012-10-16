@@ -1,7 +1,9 @@
 #!/usr/bin/python
 
 import os, sys, inspect, time, argparse, getpass, ConfigParser, csv
-import XenAPI
+import XenAPI 				# Gee I wonder why we need this
+from subprocess import call # for external system calls
+import socket				# for socket.getfqdn()
 
 # Our modules
 from class_vm import virtual_machine
@@ -212,6 +214,7 @@ def action_remove():
 	try:
 		shutdown(vm)
 		destroy(vm)
+		puppet_clean(vm)
 	finally:
 		vm.disconnect_host()
 
@@ -228,8 +231,6 @@ def destroy(vm):
 		return 0
 	else:
 		return result
-
-
 
 def action_spawn():
 	# Function to spawn a new VM from template
@@ -320,6 +321,7 @@ def action_respawn():
 
 		shutdown(vm)
 		destroy(vm)
+		puppet_clean(vm)
 		clone_from_template(mytemplate, vm)
 		set_ha_properties(vm)
 		power_on(vm)
@@ -455,6 +457,12 @@ def get_host(vm_name):
 		if verbose: print "Found " + vm_name + " on " + host_list[0]
 		return host_list[0]
 	return 0
+
+def puppet_clean(vm):
+	fqdn = socket.getfqdn(vm.name)
+	if verbose: print "Cleaning up " + fqdn + " from puppet..."
+	return_code = call("puppet cert clean " + fqdn, shell=False)
+	print str(return_code)
 
 # First we need to parse the commandline arguments. We use Python's argparse.
 parser = argparse.ArgumentParser(description='Manages our Xen cluster', add_help=False)
