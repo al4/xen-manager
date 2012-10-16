@@ -487,8 +487,8 @@ parent_parser_template.add_argument('--template', '-t', help='name of template t
 # parent_parser_template.set_defaults(template=None)
 
 # The subparsers, which should include one of the parents above
-parser_start = subparsers.add_parser('list', help='list all VMs')
-parser_start = subparsers.add_parser('list-pools', help='list all pools')
+parser_list = subparsers.add_parser('list', help='list all VMs')
+parser_listpools = subparsers.add_parser('list-pools', help='list all pools')
 parser_start = subparsers.add_parser('start', help='starts a VM', parents=[parent_parser_onevm])
 parser_stop = subparsers.add_parser('stop', help='performs a clean shutdown', parents=[parent_parser_onevm])
 parser_status = subparsers.add_parser('status', help='shows the status of a VM', parents=[parent_parser_onevm])
@@ -500,8 +500,8 @@ parser_enforce = subparsers.add_parser('enforce', help='enforce the HA policy on
 parser_enforce_all = subparsers.add_parser('enforce-all', help='check the HA policy on all VMs and enforce the policy (config must be set)', parents=[parent_parser_multivm])
 
 # Set the functions to be called by each sub-parser
-parser_start.set_defaults(func=action_list)
-parser_start.set_defaults(func=action_pools)
+parser_list.set_defaults(func=action_list)
+parser_listpools.set_defaults(func=action_pools)
 parser_start.set_defaults(func=action_start)
 parser_stop.set_defaults(func=action_stop)
 parser_status.set_defaults(func=action_status)
@@ -548,7 +548,7 @@ implants_file = config.get('Input', 'implants_file')
 # Override config if set on command line
 if args.hosts != None: # args.hosts is a list and and hasattr requires a string for some reason! So the default must be set above
 	hosts = args.hosts.split(',')
-if hasattr(args,password):
+if hasattr(args, password):
 	password = args.password
 if hasattr(args, template):
  	template = args.template
