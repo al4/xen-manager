@@ -459,8 +459,8 @@ def get_host(vm_name):
 ### Now that the functions are defined, do some work
 
 # First we need to parse the commandline arguments. We use Python's argparse.
-
 parser = argparse.ArgumentParser(description='Manages our Xen cluster', add_help=False)
+
 # parser.add_argument('action', help="action to perform")
 parser.add_argument("--password", "-p", help="root password for Xen Server (uses config if not set)")
 parser.add_argument("--configfile", "-c", help="config file to use (xenm.cfg by default)")
@@ -485,26 +485,28 @@ parent_parser_multivm.set_defaults(vmlist=None)
 
 # The subparsers, which should include one of the parents above
 parser_start = subparsers.add_parser('list', help='list all VMs')
-parser_start.set_defaults(func=action_list)
 parser_start = subparsers.add_parser('list-pools', help='list all pools')
-parser_start.set_defaults(func=action_pools)
 parser_start = subparsers.add_parser('start', help='starts a VM', parents=[parent_parser_onevm])
-parser_start.set_defaults(func=action_start)
 parser_stop = subparsers.add_parser('stop', help='performs a clean shutdown', parents=[parent_parser_onevm])
-parser_stop.set_defaults(func=action_stop)
 parser_stop = subparsers.add_parser('status', help='shows the status of a VM', parents=[parent_parser_onevm])
-parser_stop.set_defaults(func=action_status)
 parser_restart = subparsers.add_parser('restart', help='performs a clean reboot', parents=[parent_parser_onevm])
-parser_restart.set_defaults(func=action_restart)
 parser_remove = subparsers.add_parser('remove', help='removes a VM', parents=[parent_parser_onevm])
-parser_remove.set_defaults(func=action_remove)
 parser_spawn = subparsers.add_parser('spawn', help='spawns a new VM', parents=[parent_parser_onevm])
-parser_spawn.set_defaults(func=action_spawn)
 parser_respawn = subparsers.add_parser('respawn', help='removes and spawns a new copy of a VM', parents=[parent_parser_onevm])
-parser_respawn.set_defaults(func=action_respawn)
 parser_enforce = subparsers.add_parser('enforce', help='enforce the HA policy on one VM', parents=[parent_parser_onevm])
-parser_enforce.set_defaults(func=action_enforce)
 parser_enforce_all = subparsers.add_parser('enforce-all', help='check the HA policy on all VMs and enforce the policy (config must be set)', parents=[parent_parser_multivm])
+
+# Set the functions to be called by each sub-parser
+parser_start.set_defaults(func=action_list)
+parser_start.set_defaults(func=action_pools)
+parser_start.set_defaults(func=action_start)
+parser_stop.set_defaults(func=action_stop)
+parser_stop.set_defaults(func=action_status)
+parser_restart.set_defaults(func=action_restart)
+parser_remove.set_defaults(func=action_remove)
+parser_spawn.set_defaults(func=action_spawn)
+parser_respawn.set_defaults(func=action_respawn)
+parser_enforce.set_defaults(func=action_enforce)
 parser_enforce_all.set_defaults(func=action_enforce_all)
 
 args = parser.parse_args()
