@@ -496,62 +496,6 @@ def action_enforce_all():
 			myhost.disconnect()
 	print("Changed " + str(count))
 
-def action_enforce_all_old():
-	global hosts
-	# Enforces HA policy on all VMs.
-	# This function has to do a lot of the heavy lifting itself
-
-
-	# Open CSV file for reading
-	with open (vmlist, 'rb') as csvfile:
-		reader = csv.reader(csvfile, delimiter=' ')
-
-		count = 0
-		changed_vms=[]
-
-		# Loop over each entry
-		for row in reader:
-			#pp.pprint(row)
-			vmname = row[1]
-			order = int(row[0])		# We set as string but this should be an int for comparisons (and eliminates leading 0's)
-			priority = "restart"	# Hard-coded for now as we're not defining or computing anywhere
-			start_delay = 1			# Also hard-coded for now until we compute it somewhere
-
-			vm = virtual_machine(vmname, verbose)
-
-			for host in hosts:
-				vm.connect_host(host, username, password)
-
-				try:
-					# Check if the VM exists
-					check_result = vm.preflight()
-					if check_result != 0:
-						# stop this iteration if we can't find the VM
-						continue
-
-					# Check current settings and set if they are not what it should be
-					current_order = vm.get_order()
-					current_start_delay = vm.get_start_delay()
-					current_priority = vm.get_ha_restart_priority()
-
-					if int(order) != int(current_order):
-						count += 1
-						print(vmname + " order: " + str(current_order) + " => " + str(order))
-						vm.set_order(str(order))
-					if int(current_start_delay) != int(start_delay):
-						count += 1
-						print(vmname + " start_delay: " + str(current_start_delay) + " => " + str(start_delay))
-						vm.set_start_delay(str(start_delay))
-					if str(current_priority) != str(priority):
-						count += 1
-						print(vmname + " ha_restart_priority: " + str(current_priority) + " => " + str(priority))
-				finally:
-					vm.disconnect_host()
-		if count > 0:
-			print("Changed " + str(count) + " attributes")
-		else:
-			print("No VMs changed")
-
 def action_status():
 	error("Not implemented yet")
 	pass
