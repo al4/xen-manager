@@ -273,7 +273,33 @@ class disk_image:
 	def destroy(self):
 		return self.session.xenapi.VDI.destroy(self.id)
 
+class host:
+	# Host class should have existed from the start and is what should logically own a connection.
+	# Most of the code will assume the connection is in virtual_machine however
 
+	def __init__(self, name):
+		self.name = name
+		return None
 
+	def connect(self, host, username, password):
+		# Connect and auth
+		xenurl = "https://" + str(host)
+		# if self.verbose: print "Connecting to " + str(host) + "..."
+		# try:
+		session = XenAPI.Session(xenurl)
+		session.xenapi.login_with_password(username, password)
+
+		# except:
+		# message = 'Failed to connect to "' + host + '"'
+		# print message
+		# exit()
+
+		self.session = session
+		return session
+
+	def disconnect(self):
+		# if self.verbose: print "Disconnecting..."
+		self.session.xenapi.logout()
+		return 0
 
 

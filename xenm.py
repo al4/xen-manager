@@ -11,6 +11,7 @@ import socket				# for socket.getfqdn()
 from class_vm import virtual_machine
 from class_vm import block_device
 from class_vm import disk_image
+from class_vm import host
 
 import pprint # for debugging
 pp = pprint.PrettyPrinter(indent=2) # for debugging
@@ -34,7 +35,9 @@ def action_list():
 	# First instantiate a dummy virtual_machine object to get a connection
 
 	# Lists which we append to (start with headings in first row)
-	data_vms=[['name_label', 'pool', 'power_state', 'restart_priority', 'start_delay', 'order']]
+	header=[['name_label', 'pool', 'power_state', 'restart_priority', 'start_delay', 'order'],
+			['----------', '----', '-----------', '----------------', '-----------', '-----']]
+	data_vms=[]
 
 	for host in hosts:
 		# First instantiate a dummy virtual_machine object to get a connection
@@ -66,6 +69,8 @@ def action_list():
 	if verbose: print("")
 	col_width = max(len(word) for row in data_vms for word in row) + 2
 
+	for row in header:
+		print("".join(word.ljust(col_width) for word in row))
 	for row in data_vms:
 		print("".join(word.ljust(col_width) for word in row))
 
@@ -73,8 +78,10 @@ def action_list():
 
 def action_pools():
 	# This function should list all pools
+	# Badly misuses the virtual_machine class... should really be a different class altogether
 
-	data_pools=['name_label']
+	header=[['name_label', 'host'],['----------','----']]
+	data_pools=[]
 
 	for host in hosts:
 		# First instantiate a dummy virtual_machine object to get a connection
@@ -90,15 +97,19 @@ def action_pools():
 			pool = myvm.session.xenapi.pool.get_record(pools[0])
 			pool_name = pool["name_label"]
 
-			data_pools.append(pool_name)
+			data_pools.append([pool_name,host])
 
 		finally:
 			myvm.disconnect_host()
 
 	if verbose: print("") # Add line between verbose messages and output - looks neater
 
+	col_width = max(len(word) for row in data_pools for word in row) + 2
+
+	for row in header:
+		print("".join(word.ljust(col_width) for word in row))
 	for row in data_pools:
-		print(row)
+		print("".join(word.ljust(col_width) for word in row))
 
 	return data_pools
 
@@ -274,7 +285,9 @@ def action_spawn():
 
 	# for spawn, we can only work with a single host
 	if len(hosts) > 1:
-		error("Spawn requires that only one host is set, define a single host on the command line with the --host option")
+		#error("Spawn requires that only one host is set, define a single host on the command line with the --host option")
+		# We take the first one instead:
+		notify("host was not set explicitly, using " + hosts[0] + " cluster to spawn VM")
 	host = hosts[0]
 
 	# object for new vm - new so we don't fetch any attrs
@@ -312,7 +325,7 @@ def clone_from_template(mytemplate, vm):
 		vm = virtual_machine(vmname, verbose)
 		vm.connect_host(host, username, password)
 
-		print("Cloning " + template + " to " + vmname)
+		print("Cloning " + template + " to " + vmname + "...")
 		vm.clone(mytemplate.id)
 		myid = vm.read_id()
 
@@ -320,7 +333,6 @@ def clone_from_template(mytemplate, vm):
 		vm.set_template_status(False)
 
 	else: error("Unexpected return value from get_template_status")
-	print("Clone successful")
 	return 0
 
 def action_respawn():
@@ -451,9 +463,14 @@ def action_enforce_all():
 			print("No VMs changed")
 
 def action_status():
+	error("Not implemented yet")
 	pass
 
 ## Helper functions
+
+def get_pool(host):
+	# return the pool name of a given hostname
+	pass
 
 def get_host(vm_name):
 	# Find the host a VM is on.
