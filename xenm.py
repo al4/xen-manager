@@ -39,32 +39,36 @@ def action_list():
 			['----------', '----', '-----------', '----------------', '-----------', '-----']]
 	data_vms=[]
 
-	for host in hosts:
+	# Make sure no hosts have zero start orders
+
+
+	for host_name in hosts:
 		# First instantiate a dummy virtual_machine object to get a connection
-		myvm = virtual_machine("dummy", verbose)
-		myvm.connect_host(host, username, password)
+		myhost = host(host_name, username, password)
+		session = myhost.connect()
 
 		try:
-			# Get pools - ASSUMING ONLY ONE POOL PER HOST
-			pools = myvm.session.xenapi.pool.get_all()
-			if len(pools) > 1: error("Expecting only one pool on a host")
-
 			# Get the name of the pool on this host
-			pool = myvm.session.xenapi.pool.get_record(pools[0])
-			pool_name = pool["name_label"]
+			pool_name = myhost.get_pool()
 
 			if verbose:
 				print("Getting VMs from " + host + "...")
 
-			vms = myvm.session.xenapi.VM.get_all()
+			vms = myhost.session.xenapi.VM.get_all()
 
 			# Build a list of VMs that are not templates or control domains
 			for vm in vms:
-				record = myvm.session.xenapi.VM.get_record(vm)
+				record = myhost.session.xenapi.VM.get_record(vm)
 				if not(record["is_a_template"]) and not(record["is_control_domain"]):
-					data_vms.append([record["name_label"],pool_name,record["power_state"],record["ha_restart_priority"],record["start_delay"],record["order"]])
+					data_vms.append([
+						record["name_label"],
+						pool_name,record["power_state"],
+						record["ha_restart_priority"],
+						record["start_delay"],
+						record["order"]
+						])
 		finally:
-			myvm.disconnect_host()
+			myhost.disconnect()
 
 	if verbose: print("")
 	col_width = max(len(word) for row in data_vms for word in row) + 2
@@ -75,6 +79,13 @@ def action_list():
 		print("".join(word.ljust(col_width) for word in row))
 
 	return data_vms
+
+def action_get_all_vms(session):
+	# First instantiate a dummy virtual_machine object to get a connection
+	myvm = virtual_machine("dummy", verbose)
+	myvm.connect_host(host, username, password)
+
+
 
 def action_pools():
 	# This function should list all pools
@@ -204,7 +215,7 @@ def action_restart():
 		vm.disconnect_host()
 
 def action_remove():
-	# CURRENTLY DOES NOT REMOVE DISKS
+
 
 	global vmname
 	global host
@@ -432,6 +443,7 @@ def action_enforce_all():
 			vmname = row[1]
 			order = int(row[0])		# We set as string but this should be an int for comparisons (and eliminates leading 0's)
 			priority = "restart"	# Hard-coded for now as we're not defining or computing anywhere
+			start_delay = 1			# Also hard-coded for now until we compute it somewhere
 
 			vm = virtual_machine(vmname, verbose)
 
@@ -445,20 +457,26 @@ def action_enforce_all():
 						# stop this iteration if we can't find the VM
 						continue
 
-					# Check order and set if it is not what it should be
+					# Check current settings and set if they are not what it should be
 					current_order = vm.get_order()
+					current_start_delay = vm.get_start_delay()
+					current_priority = vm.get_ha_restart_priority()
 
 					if int(order) != int(current_order):
 						count += 1
-						changed_vms.append(vmname)
-						print("Changing order on " + vmname + " from " + str(current_order) + " to " + str(order))
+						print(vmname + " order: " + str(current_order) + " => " + str(order))
 						vm.set_order(str(order))
+					if int(current_start_delay) != int(start_delay):
+						count += 1
+						print(vmname + " start_delay: " + str(current_start_delay) + " => " + str(start_delay))
+						vm.set_start_delay(str(start_delay))
+					if str(current_priority) != str(priority):
+						count += 1
+						print(vmname + " ha_restart_priority: " + str(current_priority) + " => " + str(priority))
 				finally:
 					vm.disconnect_host()
 		if count > 0:
-			print("Changed " + str(count) + " VMs:")
-			# for row in changed_vms:
-			# 	print(row)
+			print("Changed " + str(count) + " attributes")
 		else:
 			print("No VMs changed")
 
@@ -509,7 +527,11 @@ def puppet_clean(vm):
 	fqdn = socket.getfqdn(vm.name)
 	if verbose: print("Cleaning up " + fqdn + " from puppet...")
 	return_code = call([puppet_path,"cert","clean",fqdn], shell=False)
-	print(str(return_code))
+	if str(return_code) == "24":
+		# Puppet returns 24 when it can't find the hostname. Usually this is because it is not a fqdn,
+		# socket.getfqdn returns exactly what you give it if it can't find a fully-qualified host name.
+		notify("Could not find the hostname in puppet, ensure DNS entries are set correctly")
+	return return_code
 
 # First we need to parse the commandline arguments. We use Python's argparse.
 parser = argparse.ArgumentParser(description='Manages our Xen cluster', add_help=False)

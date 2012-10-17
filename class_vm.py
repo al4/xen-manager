@@ -129,8 +129,8 @@ class virtual_machine:
 
 	def set_order(self, order):
 		self.order = order
-		if self.verbose: print "Setting order for " + self.name + " to " + str(order)
-		self.session.xenapi.VM.set_order(self.id, str(order))
+		#if self.verbose: print "Setting order for " + self.name + " to " + str(order)
+		return self.session.xenapi.VM.set_order(self.id, str(order))
 
 	def get_order(self):
 		return self.order
@@ -139,18 +139,18 @@ class virtual_machine:
 		# Sets the priority. Can be "best-effort", "restart", or ""
 
 		self.ha_restart_priority = priority
-		if self.verbose: print "Setting ha_restart_priority to " + str(priority)
+		#if self.verbose: print "Setting ha_restart_priority to " + str(priority)
 		self.session.xenapi.VM.set_ha_restart_priority(self.id, "restart")
 		return 0
 
-	def get_ha_restart_priotiry(self):
+	def get_ha_restart_priority(self):
 		return self.ha_restart_priority
 
 	def set_start_delay(self, start_delay):
 		# set the delay attribute
 
 		self.start_delay = start_delay
-		if self.verbose: print "Setting start_delay for " + self.name + " to " + str(start_delay)
+		#if self.verbose: print "Setting start_delay for " + self.name + " to " + str(start_delay)
 		self.session.xenapi.VM.set_start_delay(self.id, str(start_delay))	# <- documentation says int but you get FIELD_TYPE_ERROR if you pass an integer here, happy when converted to str
 		return self.start_delay
 
@@ -277,17 +277,19 @@ class host:
 	# Host class should have existed from the start and is what should logically own a connection.
 	# Most of the code will assume the connection is in virtual_machine however
 
-	def __init__(self, name):
+	def __init__(self, name, username, password):
 		self.name = name
+		self.username = username
+		self.password = password
 		return None
 
-	def connect(self, host, username, password):
+	def connect(self):
 		# Connect and auth
-		xenurl = "https://" + str(host)
+		xenurl = "https://" + str(self.name)
 		# if self.verbose: print "Connecting to " + str(host) + "..."
 		# try:
 		session = XenAPI.Session(xenurl)
-		session.xenapi.login_with_password(username, password)
+		session.xenapi.login_with_password(self.username, self.password)
 
 		# except:
 		# message = 'Failed to connect to "' + host + '"'
@@ -301,5 +303,19 @@ class host:
 		# if self.verbose: print "Disconnecting..."
 		self.session.xenapi.logout()
 		return 0
+
+	def get_pool(self):
+		# Expect only one pool on a host, i.e. a 1:1 relationship. Thus it should be OK to keep them in the same class
+		# However judging by the fact that the API returns list, it appears to be possible to have more than one pool per host.
+		pools = self.session.xenapi.pool.get_all()
+		pool = self.session.xenapi.pool.get_record(pools[0])
+		pool_name = pool["name_label"]
+		return pool_name
+
+
+
+
+
+
 
 
