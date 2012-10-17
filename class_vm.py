@@ -2,7 +2,6 @@
 
 import XenAPI
 
-# Right, let's get down to the main class...
 class virtual_machine:
 	def __init__(self, name, verbose=False):
 		# We only set the name on instantiation
@@ -227,6 +226,136 @@ class virtual_machine:
 	def read_vbds(self):
 		return self.session.xenapi.VM.get_VBDs(self.id)
 
+class xen_vm:
+	# This class should replace the original "virtual_machine" class that I originally wrote
+	# It takes the ID as input and doesn't "guess" the ID from the name
+	# When calling this class we should already be connected to a host, and know the ID of the VM we're dealing with
+
+	def __init__(self, hostObj, id):
+		self.id = id
+		self.host = hostObj
+		self.session = hostObj.session
+
+	def get_name(self):
+		self.name = self.session.xenapi.get_name_label(self.id)
+		return self.name
+
+	def get_record(self):
+		self.record = self.session.xenapi.VM.get_record(self.id)
+		return self.record
+
+	def read_from_xen(self):
+		# Reads all required values from Xen and sets them in the class
+		try:
+			data = self.session.xenapi.VM.get_record(self.id)
+			#pp.pprint(data)
+		except:
+			print 'Failed to read VM attributes for ' + self.name
+			return 1
+
+		# Parse the values we need and set them in the class. Might be useful:
+		# 	ha_restart_priority, start_delay, power_state, order
+
+		# Remember to add a get_ (and possibly set_) method for each field we track
+
+		self.name = str(data['name_label'])
+		self.power_state = str(data['power_state'])
+		self.ha_restart_priority = str(data['ha_restart_priority'])
+		self.start_delay = str(data['start_delay'])
+		self.order = str(data['order'])
+		self.is_a_template = data['is_a_template']
+		self.is_control_domain = data['is_control_domain']
+
+		return 0
+
+	def set_order(self, order):
+		self.order = order
+		#if self.verbose: print "Setting order for " + self.name + " to " + str(order)
+		return self.session.xenapi.VM.set_order(self.id, str(order))
+
+	def get_order(self):
+		self.order = self.session.xenapi.VM.get_order(self.id)
+		return self.order
+
+	def set_ha_restart_priority(self, priority):
+		# Sets the priority. Can be "best-effort", "restart", or ""
+		self.ha_restart_priority = priority
+		#if self.verbose: print "Setting ha_restart_priority to " + str(priority)
+		self.session.xenapi.VM.set_ha_restart_priority(self.id, "restart")
+		return 0
+
+	def get_ha_restart_priority(self):
+		self.ha_restart_priority = self.session.xenapi.VM.get_ha_restart_priority(self.id)
+		return self.ha_restart_priority
+
+	def set_start_delay(self, start_delay):
+		# set the delay attribute
+
+		self.start_delay = start_delay
+		#if self.verbose: print "Setting start_delay for " + self.name + " to " + str(start_delay)
+		self.session.xenapi.VM.set_start_delay(self.id, str(start_delay))	# <- documentation says int but you get FIELD_TYPE_ERROR if you pass an integer here, happy when converted to str
+		return self.start_delay
+
+	def get_start_delay(self):
+		self.start_delay = self.session.xenapi.VM.get_start_delay(self.id)
+		return self.start_delay
+
+	def get_implant(self):
+		# get the implant from DNS TXT record
+		pass
+		return 0
+
+	# Actions we can perform
+	# Named to be consistent with the functions in the Xen API
+
+	def start(self):
+		if self.power_state == "Running":
+			return 1
+		else:
+			# Need more robust checking, wouldn't know if Xen returned an error
+			self.session.xenapi.VM.start(self.id, False, False)
+			return 0
+
+	def clean_reboot(self):
+		# Extra check to ensure the VM is not running
+		if self.power_state != "Running":
+			return 1
+		else:
+			# Need more robust checking, wouldn't know if Xen returned an error
+			self.session.xenapi.VM.clean_reboot(self.id)
+			return 0
+
+	def clean_shutdown(self):
+		if self.power_state != "Running":
+			return 1
+		else:
+			# Need more robust checking, wouldn't know if Xen returned an error
+			return self.session.xenapi.VM.clean_shutdown(self.id)
+
+	def clone(self, template):
+		# template is a vm id/reference
+		result = self.session.xenapi.VM.clone(template, self.name)
+		self.session.xenapi.VM.is_a_template = False
+		return result
+
+	def get_template_status(self):
+		return self.session.xenapi.VM.get_is_a_template(self.id)
+
+	def set_template_status(self, status):
+		# Requires a boolean status to be passed
+		self.template = self.session.xenapi.VM.set_is_a_template(self.id, status)
+		return self.template
+
+	def destroy(self):
+		# Destroys the VM
+		return self.session.xenapi.VM.destroy(self.id)
+
+	def read_vbds(self):
+		self.vbds = self.session.xenapi.VM.get_VBDs(self.id)
+		return self.vbds
+
+
+
 class block_device:
 	# Class for a virtual block device.
 	# Block devices are attached to VMs, could be a CDROM, hard disk, etc
@@ -310,9 +439,12 @@ class host:
 		pools = self.session.xenapi.pool.get_all()
 		pool = self.session.xenapi.pool.get_record(pools[0])
 		pool_name = pool["name_label"]
+		self.pool = pool_name
 		return pool_name
 
-
+	def get_vms(self):
+		vms = self.session.xenapi.VM.get_all()
+		return vms
 
 
 

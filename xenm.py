@@ -12,6 +12,9 @@ from class_vm import virtual_machine
 from class_vm import block_device
 from class_vm import disk_image
 from class_vm import host
+from class_vm import xen_vm 	# This is the same as virtual_machine but takes an ID as input and not a name.
+							# This is the more "correct" way of doing things and functions should be
+							# updated to use this class instead
 
 import pprint # for debugging
 pp = pprint.PrettyPrinter(indent=2) # for debugging
@@ -32,18 +35,14 @@ def notify(message):
 ### Functions for the sub-commands
 def action_list():
 	# Polls all Xen servers to gather data
-	# First instantiate a dummy virtual_machine object to get a connection
 
 	# Lists which we append to (start with headings in first row)
 	header=[['name_label', 'pool', 'power_state', 'restart_priority', 'start_delay', 'order'],
 			['----------', '----', '-----------', '----------------', '-----------', '-----']]
 	data_vms=[]
 
-	# Make sure no hosts have zero start orders
-
-
 	for host_name in hosts:
-		# First instantiate a dummy virtual_machine object to get a connection
+		# Initialise the host
 		myhost = host(host_name, username, password)
 		session = myhost.connect()
 
@@ -54,11 +53,13 @@ def action_list():
 			if verbose:
 				print("Getting VMs from " + host + "...")
 
-			vms = myhost.session.xenapi.VM.get_all()
+			vms = myhost.get_vms()
 
 			# Build a list of VMs that are not templates or control domains
-			for vm in vms:
-				record = myhost.session.xenapi.VM.get_record(vm)
+			for vm_id in vms:
+				myvm = xen_vm(myhost, vm_id)
+				record = myvm.get_record()
+
 				if not(record["is_a_template"]) and not(record["is_control_domain"]):
 					data_vms.append([
 						record["name_label"],
@@ -80,13 +81,6 @@ def action_list():
 
 	return data_vms
 
-def action_get_all_vms(session):
-	# First instantiate a dummy virtual_machine object to get a connection
-	myvm = virtual_machine("dummy", verbose)
-	myvm.connect_host(host, username, password)
-
-
-
 def action_pools():
 	# This function should list all pools
 	# Badly misuses the virtual_machine class... should really be a different class altogether
@@ -96,7 +90,7 @@ def action_pools():
 
 	for host in hosts:
 		# First instantiate a dummy virtual_machine object to get a connection
-		myvm = virtual_machine("dummy", verbose)
+		myhost = xen_vm("dummy", verbose)
 		myvm.connect_host(host, username, password)
 
 		try:
@@ -425,10 +419,88 @@ def set_ha_properties(vm):
 		if count == 0:
 			"Did not find entry for" + vm.name + " in " + vmlist + ", skipping ha config"
 
+
 def action_enforce_all():
-	global host
+	# Loop over each VM on each host, look for appropriate entry in the CSV file, and fix if different
+
+	# Load CSV data into list
+	with open (vmlist, 'rb') as csvfile:
+		reader = csv.reader(csvfile, delimiter=' ')
+
+		ha_config = {}
+		# Loop over each entry
+		for row in reader:
+			#pp.pprint(row)
+			vmname = row[1]
+			order = int(row[0])		# We set as string but this should be an int for comparisons (and eliminates leading 0's)
+			priority = "restart"	# Hard-coded for now as we're not defining or computing anywhere
+			start_delay = 0			# Also hard-coded for now until we compute it somewhere
+
+			# Put the values in a dictionary. The key is prefixed by vmname
+			ha_config[vmname + '_order'] = order
+			ha_config[vmname + '_priority'] = priority
+			ha_config[vmname + '_start_delay'] = start_delay
+
+	count = 0	# count for changes made
+	# ha_config is loaded, now to compare and set it
+	for host_name in hosts:
+		# Initialise the host
+		myhost = host(host_name, username, password)
+		session = myhost.connect()
+
+		try:
+			# Get the name of the pool on this host
+			pool_name = myhost.get_pool()
+			if verbose:	print("Checking VMs on " + pool_name + "...")
+			vm_list = myhost.get_vms()
+
+			# Loop over VMs
+			for vm_id in vm_list:
+				myvm = xen_vm(myhost, vm_id)
+				myvm.read_from_xen()	# Loads the values we need into the class
+
+				# Don't want to modify templates or control domains!
+				if myvm.is_control_domain == False and myvm.is_a_template == False:
+					# Check the values and set if different
+					current_order = myvm.order
+					current_start_delay = myvm.start_delay
+					current_priority = myvm.ha_restart_priority
+
+					if myvm.name + "_order" in ha_config:
+						# print(myvm.name + " is in config")
+						order = ha_config[myvm.name + '_order']
+						start_delay = ha_config[myvm.name + '_start_delay']
+						ha_restart_priority = ha_config[myvm.name + '_priority']
+					else:
+						# print(myvm.name + " is not in config")
+						# enforce defaults
+						order = default_order
+						start_delay = default_start_delay
+						ha_restart_priority = default_ha_restart_priority
+
+					# Now set them
+					if int(order) != int(current_order):
+						count += 1
+						print(myvm.name + " order: " + str(current_order) + " => " + str(order))
+						myvm.set_order(str(order))
+					if int(current_start_delay) != int(start_delay):
+						count += 1
+						print(myvm.name + " start_delay: " + str(current_start_delay) + " => " + str(start_delay))
+						myvm.set_start_delay(str(start_delay))
+					if str(current_priority) != str(priority):
+						count += 1
+						print(myvm.name + " ha_restart_priority: " + str(current_priority) + " => " + str(priority))
+				else:
+					continue
+		finally:
+			myhost.disconnect()
+	print("Changed " + str(count))
+
+def action_enforce_all_old():
+	global hosts
 	# Enforces HA policy on all VMs.
 	# This function has to do a lot of the heavy lifting itself
+
 
 	# Open CSV file for reading
 	with open (vmlist, 'rb') as csvfile:
@@ -485,10 +557,6 @@ def action_status():
 	pass
 
 ## Helper functions
-
-def get_pool(host):
-	# return the pool name of a given hostname
-	pass
 
 def get_host(vm_name):
 	# Find the host a VM is on.
