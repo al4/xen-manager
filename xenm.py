@@ -508,7 +508,7 @@ def get_host(vm_name):
 def puppet_clean(vm):
 	fqdn = socket.getfqdn(vm.name)
 	if verbose: print("Cleaning up " + fqdn + " from puppet...")
-	return_code = call(puppet_path + " cert clean " + fqdn, shell=False)
+	return_code = call([puppet_path,"cert","clean",fqdn], shell=False)
 	print(str(return_code))
 
 # First we need to parse the commandline arguments. We use Python's argparse.
