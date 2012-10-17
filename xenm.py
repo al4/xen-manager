@@ -508,7 +508,7 @@ def get_host(vm_name):
 def puppet_clean(vm):
 	fqdn = socket.getfqdn(vm.name)
 	if verbose: print("Cleaning up " + fqdn + " from puppet...")
-	return_code = call("puppet cert clean " + fqdn, shell=False)
+	return_code = call(puppet_path + " cert clean " + fqdn, shell=False)
 	print(str(return_code))
 
 # First we need to parse the commandline arguments. We use Python's argparse.
@@ -593,9 +593,10 @@ else:
 	error(message)
 
 # Get config options
-hosts = config.get('Connection', 'hosts').split(',')
-username = config.get('Connection', 'username')
-password = config.get('Connection', 'password')
+hosts = config.get('Main', 'hosts').split(',')
+username = config.get('Main', 'username')
+password = config.get('Main', 'password')
+puppet_path = config.get('Main', 'puppet_path')
 template = config.get('Input', 'template')
 vmlist = config.get('Input', 'vmlist')
 implants_file = config.get('Input', 'implants_file')

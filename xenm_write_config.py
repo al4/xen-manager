@@ -6,10 +6,11 @@ import ConfigParser # this is configparser in python3
 
 config = ConfigParser.RawConfigParser()
 
-config.add_section('Connection')
-config.set('Connection', 'hosts', 'xen-a01,xen-d01,xen-d02,xen-d09')
-config.set('Connection', 'username', 'root')
-config.set('Connection', 'password', '')
+config.add_section('Main')
+config.set('Main', 'hosts', 'xen-a01,xen-d01,xen-d02,xen-d09')
+config.set('Main', 'username', 'root')
+config.set('Main', 'password', '')
+config.set('Main', 'puppet_path', '/usr/bin/puppet')			# Path to puppet binary (for cleaning certs)
 
 config.add_section('Input')
 # implants_file is the list of the implants with a priorities which we will calculate from
