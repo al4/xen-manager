@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import XenAPI
 
 # Right, let's get down to the main class...
@@ -221,5 +223,57 @@ class virtual_machine:
 	def destroy(self):
 		# Destroys the VM
 		return self.session.xenapi.VM.destroy(self.id)
+
+	def read_vbds(self):
+		return self.session.xenapi.VM.get_VBDs(self.id)
+
+class block_device:
+	# Class for a virtual block device.
+	# Block devices are attached to VMs, could be a CDROM, hard disk, etc
+	# We need to know about the VBD before we can do anything to associated VDIs
+
+	# This class differs a bit from the approach taken with virtual_machine, in that the input is
+	# an ID rather than the name.
+
+	# Putting the connection stuff in the virtul_machine class was a bit of a mistake, should really be separate.
+	# Doesn't really affect this code as it needs a session passed anyway, but it does in the application as you
+	# need to pass the virtual_machine's session object through.
+
+	def __init__(self, id, session):
+		self.id = id
+		self.session = session
+		# would probably call this read_record but went with read_from_xen to be consistent with the vm class
+		record = self.session.xenapi.VBD.get_record(self.id)
+
+		# Attributes we want
+		# VDI will be NULL if it does not have an associated disk image
+		self.vdi_id = record['VDI']
+		self.device = record['device']
+		self.vm_id = record['VM']
+
+		return None
+
+class disk_image:
+	# Class for a virtual disk image
+	# Typically owned by a VBD.
+
+	def __init__(self, id, session):
+		self.id = id
+		self.session = session
+
+		# get data
+		record = self.session.xenapi.VDI.get_record(self.id)
+		print record
+
+		self.VBDs = record['VBDs']
+
+
+		return None
+
+	def destroy(self):
+		return self.session.xenapi.VDI.destroy(self.id)
+
+
+
 
 

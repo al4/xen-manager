@@ -1,4 +1,6 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 
 import os, sys, inspect, time, argparse, getpass, ConfigParser, csv
 import XenAPI 				# Gee I wonder why we need this
@@ -7,6 +9,8 @@ import socket				# for socket.getfqdn()
 
 # Our modules
 from class_vm import virtual_machine
+from class_vm import block_device
+from class_vm import disk_image
 
 import pprint # for debugging
 pp = pprint.PrettyPrinter(indent=2) # for debugging
@@ -24,14 +28,7 @@ def notify(message):
 	# Notify user but don't quit
 	print "NOTICE: " + str(message)
 
-# def disconnect():
-# 	if session != None:
-# 		print "Logging out..."
-# 		session.xenapi.logout()
-# 	exit()
-
 ### Functions for the sub-commands
-
 def action_list():
 	# Polls all Xen servers to gather data
 	# First instantiate a dummy virtual_machine object to get a connection
@@ -213,6 +210,7 @@ def action_remove():
 
 	try:
 		shutdown(vm)
+		remove_disks(vm)
 		destroy(vm)
 		puppet_clean(vm)
 	finally:
@@ -232,9 +230,41 @@ def destroy(vm):
 	else:
 		return result
 
+def remove_disks(vm):
+	# Remove all disks from a VM.
+	vbd_ids = vm.read_vbds()
+
+	# vms can have multiple vbds so we loop over them
+	for id in vbd_ids:
+		# This next bit is probably quite hard to read.
+		# The vbd and vdi classes both need and ID and session passed to them.
+		# for the vbd, this is the ID return from the vm class (as it is one of its block devices)
+		# for vdi, this is the ID returned from the vbd class (vbd.VDI)
+		vbd = block_device(id, vm.session)
+
+		# vbd can only have one vdi (at least I hope so, it is not returning a list), so here
+		# we check if it is NULL and if not delete it
+		if vbd.vdi_id == 'OpaqueRef:NULL':
+			# No vdi to delete
+			continue
+		elif len(vbd.vdi_id) == 46:
+			# Looks like a valid VDI attached to a valid VBD attached to a VM we are removing...
+			vdi = disk_image(vbd.vdi_id, vm.session)
+
+			# Check this VDI is not attached to any other VBDs
+			if len(vdi.VBDs) > 1:
+				notify("Not removing VBD with ID " + vdi.id + " as it is attached to another VM")
+			else:
+				print "Deleting " + vbd.device + " from " + vm.name + "..."
+				vdi.destroy()
+		else:
+			error = "Unexpected VDI ID"
+			return 1
+	return 0
+
 def action_spawn():
 	# Function to spawn a new VM from template
-	# Template is defined in config, could make an optional argument at some point
+	# Would be nice if this also set the name_label on associated VDIs.
 
 	global vmname
 	global host
