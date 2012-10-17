@@ -20,13 +20,13 @@ pp = pprint.PrettyPrinter(indent=2) # for debugging
 ### Housekeeping functions. TODO - implement proper logging
 def error(message):
 	# Throw message and exit
-	print "ERROR: " + str(message)
+	print("ERROR: " + str(message))
 	# disconnect()
 	exit()
 
 def notify(message):
 	# Notify user but don't quit
-	print "NOTICE: " + str(message)
+	print("NOTICE: " + str(message))
 
 ### Functions for the sub-commands
 def action_list():
@@ -51,7 +51,7 @@ def action_list():
 			pool_name = pool["name_label"]
 
 			if verbose:
-				print "Getting VMs from " + host + "..."
+				print("Getting VMs from " + host + "...")
 
 			vms = myvm.session.xenapi.VM.get_all()
 
@@ -63,11 +63,11 @@ def action_list():
 		finally:
 			myvm.disconnect_host()
 
-	if verbose: print ""
+	if verbose: print("")
 	col_width = max(len(word) for row in data_vms for word in row) + 2
 
 	for row in data_vms:
-		print "".join(word.ljust(col_width) for word in row)
+		print("".join(word.ljust(col_width) for word in row))
 
 	return data_vms
 
@@ -95,10 +95,10 @@ def action_pools():
 		finally:
 			myvm.disconnect_host()
 
-	if verbose: print "" # Add line between verbose messages and output - looks neater
+	if verbose: print("") # Add line between verbose messages and output - looks neater
 
 	for row in data_pools:
-		print row
+		print(row)
 
 	return data_pools
 
@@ -124,10 +124,10 @@ def action_start():
 def power_on(vm):
 	check_result = vm.preflight()
 	if check_result == 0:
-		print "Starting " + vm.name + "..."
+		print("Starting " + vm.name + "...")
 		result = vm.start()
 		if result == 0:
-			print "Start succeeded"
+			print("Start succeeded")
 		else:
 			error(result)
 	else:
@@ -156,10 +156,10 @@ def action_stop():
 def shutdown(vm):
 	check_result = vm.preflight()
 	if check_result == 0:
-		print "Stopping " + vm.name + "..."
+		print("Stopping " + vm.name + "...")
 		result = vm.clean_shutdown()
 		if result == 0:
-			print "Stop succeeded"
+			print("Stop succeeded")
 		elif result == 1:
 			notify("VM is not running")
 		else:
@@ -184,7 +184,7 @@ def action_restart():
 		if check_result == 0:
 			result = vm.clean_reboot()
 			if result == 0:
-				print "Restart succeeded"
+				print("Restart succeeded")
 			else:
 				error(result)
 		else:
@@ -221,11 +221,11 @@ def destroy(vm):
 	vm.read_id()
 	vm.read_from_xen()
 
-	print "Removing " + vmname + " from " + host + "..."
+	print("Removing " + vmname + " from " + host + "...")
 
 	result = vm.destroy()
 	if result == "":
-		print "Remove succeeded"
+		print("Remove succeeded")
 		return 0
 	else:
 		return result
@@ -255,7 +255,7 @@ def remove_disks(vm):
 			if len(vdi.VBDs) > 1:
 				notify("Not removing VBD with ID " + vdi.id + " as it is attached to another VM")
 			else:
-				print "Deleting " + vbd.device + " from " + vm.name + "..."
+				print("Deleting " + vbd.device + " from " + vm.name + "...")
 				vdi.destroy()
 		else:
 			error = "Unexpected VDI ID"
@@ -312,7 +312,7 @@ def clone_from_template(mytemplate, vm):
 		vm = virtual_machine(vmname, verbose)
 		vm.connect_host(host, username, password)
 
-		print "Cloning " + template + " to " + vmname
+		print("Cloning " + template + " to " + vmname)
 		vm.clone(mytemplate.id)
 		myid = vm.read_id()
 
@@ -320,7 +320,7 @@ def clone_from_template(mytemplate, vm):
 		vm.set_template_status(False)
 
 	else: error("Unexpected return value from get_template_status")
-	print "Clone successful"
+	print("Clone successful")
 	return 0
 
 def action_respawn():
@@ -375,7 +375,7 @@ def action_enforce():
 		vm.disconnect_host()
 
 def set_ha_properties(vm):
-	print "Setting HA priorities..."
+	print("Setting HA priorities...")
 	count = 0
 
 	with open(vmlist, 'rb') as csvfile:
@@ -393,7 +393,7 @@ def set_ha_properties(vm):
 
 					if int(order) != int(current_order):
 						vm.set_order(str(order))
-						if verbose: print "Changed order on " + vmname + " from " + str(current_order) + " to " + str(order)
+						if verbose: print("Changed order on " + vmname + " from " + str(current_order) + " to " + str(order))
 
 				else:
 					return check_result
@@ -439,16 +439,16 @@ def action_enforce_all():
 					if int(order) != int(current_order):
 						count += 1
 						changed_vms.append(vmname)
-						print "Changing order on " + vmname + " from " + str(current_order) + " to " + str(order)
+						print("Changing order on " + vmname + " from " + str(current_order) + " to " + str(order))
 						vm.set_order(str(order))
 				finally:
 					vm.disconnect_host()
 		if count > 0:
-			print "Changed " + str(count) + " VMs:"
+			print("Changed " + str(count) + " VMs:")
 			# for row in changed_vms:
-			# 	print row
+			# 	print(row)
 		else:
-			print "No VMs changed"
+			print("No VMs changed")
 
 def action_status():
 	pass
@@ -468,7 +468,7 @@ def get_host(vm_name):
 		myvm = virtual_machine("dummy", verbose)
 		myvm.connect_host(host, username, password)
 
-		if verbose: print "Looking for " + vm_name + " on " + host
+		if verbose: print("Looking for " + vm_name + " on " + host)
 		try:
 			# Get
 			myvm_id = myvm.session.xenapi.VM.get_by_name_label(vmname)
@@ -484,15 +484,15 @@ def get_host(vm_name):
 	if len(host_list) > 1:
 		return 1
 	if len(host_list) == 1:
-		if verbose: print "Found " + vm_name + " on " + host_list[0]
+		if verbose: print("Found " + vm_name + " on " + host_list[0])
 		return host_list[0]
 	return 0
 
 def puppet_clean(vm):
 	fqdn = socket.getfqdn(vm.name)
-	if verbose: print "Cleaning up " + fqdn + " from puppet..."
+	if verbose: print("Cleaning up " + fqdn + " from puppet...")
 	return_code = call("puppet cert clean " + fqdn, shell=False)
-	print str(return_code)
+	print(str(return_code))
 
 # First we need to parse the commandline arguments. We use Python's argparse.
 parser = argparse.ArgumentParser(description='Manages our Xen cluster', add_help=False)
@@ -555,7 +555,7 @@ args = parser.parse_args()
 # Set verbose mode. args.verbose is set by action='store_true' option in parser.
 if args.verbose:
 	verbose=True
-	print "Verbose on"
+	print("Verbose on")
 else:
 	verbose=False
 
@@ -593,7 +593,7 @@ if hasattr(args, template):
 if hasattr(args, vmlist):
 	vllist = args.vmlist
 
-if verbose: print 'Hosts: ' + str(hosts)
+if verbose: print('Hosts: ' + str(hosts))
 
 # Get defaults (not sure if we'll use these):
 default_ha_restart_priority = config.get('HA Defaults', 'restart_priority')
