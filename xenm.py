@@ -432,9 +432,10 @@ def action_enforce_all():
 		for row in reader:
 			#pp.pprint(row)
 			vmname = row[1]
-			order = int(row[0])		# We set as string but this should be an int for comparisons (and eliminates leading 0's)
-			priority = "restart"	# Hard-coded for now as we're not defining or computing anywhere
-			start_delay = 0			# Also hard-coded for now until we compute it somewhere
+			order = int(row[0])			# We set as string but this should be an int for comparisons (and eliminates leading 0's)
+			priority = 'restart'		# Hard-coded for now as we're not defining or computing anywhere
+										## Overridden by hack later
+			start_delay = 0				# Also hard-coded for now until we compute it somewhere
 
 			# Put the values in a dictionary. The key is prefixed by vmname
 			ha_config[vmname + '_order'] = order
@@ -470,13 +471,19 @@ def action_enforce_all():
 						# print(myvm.name + " is in config")
 						order = ha_config[myvm.name + '_order']
 						start_delay = ha_config[myvm.name + '_start_delay']
-						ha_restart_priority = ha_config[myvm.name + '_priority']
+						priority = ha_config[myvm.name + '_priority']
+
+						# Hack to set start_delay to "restart if possible" if order > 1000
+						if int(order) > 1000:
+							priority = 'best-effort'
+						else:
+							priority = 'restart'
 					else:
 						# print(myvm.name + " is not in config")
 						# enforce defaults
 						order = default_order
 						start_delay = default_start_delay
-						ha_restart_priority = default_ha_restart_priority
+						priority = default_ha_restart_priority
 
 					# Now set them
 					if int(order) != int(current_order):
@@ -489,7 +496,8 @@ def action_enforce_all():
 						myvm.set_start_delay(str(start_delay))
 					if str(current_priority) != str(priority):
 						count += 1
-						print(myvm.name + " ha_restart_priority: " + str(current_priority) + " => " + str(priority))
+						print(myvm.name + " priority: " + str(current_priority) + " => " + str(priority))
+						myvm.set_ha_restart_priority(str(priority))
 				else:
 					continue
 		finally:

@@ -139,8 +139,8 @@ class virtual_machine:
 
 		self.ha_restart_priority = priority
 		#if self.verbose: print "Setting ha_restart_priority to " + str(priority)
-		self.session.xenapi.VM.set_ha_restart_priority(self.id, "restart")
-		return 0
+		return self.session.xenapi.VM.set_ha_restart_priority(self.id, self.ha_restart_priority)
+
 
 	def get_ha_restart_priority(self):
 		return self.ha_restart_priority
@@ -279,9 +279,9 @@ class xen_vm:
 
 	def set_ha_restart_priority(self, priority):
 		# Sets the priority. Can be "best-effort", "restart", or ""
-		self.ha_restart_priority = priority
+		self.ha_restart_priority = str(priority)
 		#if self.verbose: print "Setting ha_restart_priority to " + str(priority)
-		self.session.xenapi.VM.set_ha_restart_priority(self.id, "restart")
+		self.session.xenapi.VM.set_ha_restart_priority(self.id, self.ha_restart_priority)
 		return 0
 
 	def get_ha_restart_priority(self):
