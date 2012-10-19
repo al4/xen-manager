@@ -2,6 +2,61 @@
 
 import XenAPI
 
+class host:
+	# Host class should have existed from the start and is what should logically own a connection.
+	# Most of the code presently assumes the connection is in virtual_machine however
+
+	def __init__(self, name, username, password):
+		self.name = name
+		self.username = username
+		self.password = password
+		return None
+
+	def connect(self):
+		# Connect and auth
+		xenurl = "https://" + str(self.name)
+		# if self.verbose: print "Connecting to " + str(host) + "..."
+		# try:
+		session = XenAPI.Session(xenurl)
+		session.xenapi.login_with_password(self.username, self.password)
+
+		# except:
+		# message = 'Failed to connect to "' + host + '"'
+		# print message
+		# exit()
+
+		self.session = session
+		return session
+
+	def disconnect(self):
+		self.session.xenapi.logout()
+		return 0
+
+	def get_pool(self):
+		# Expect only one pool on a host, i.e. a 1:1 relationship. Thus it should be OK to keep them in the same class
+		# However judging by the fact that the API returns list, it appears to be possible to have more than one pool per host.
+		pools = self.session.xenapi.pool.get_all()
+		pool = self.session.xenapi.pool.get_record(pools[0])
+		pool_name = pool["name_label"]
+		self.pool = pool_name
+		return pool_name
+
+	def get_vms(self):
+		vms = self.session.xenapi.VM.get_all()
+		return vms
+
+	def get_vm(self, vm_name):
+		# Returns a list but we keep names unique...
+		vms = self.session.xenapi.VM.get_by_name_label(vm_name)
+
+		# Don't like notifying here but it's easier this way...
+		if len(vms) > 1:
+			print("Found more than one VM with name/label " + vm_name + ", using the first")
+		if len(vms) == 0:
+			return None
+		return vms[0]
+
+
 class xen_vm:
 	# This class should replace the original "virtual_machine" class that I originally wrote
 	# It takes the ID as input and doesn't "guess" the ID from the name
@@ -187,59 +242,6 @@ class disk_image:
 	def destroy(self):
 		return self.session.xenapi.VDI.destroy(self.id)
 
-class host:
-	# Host class should have existed from the start and is what should logically own a connection.
-	# Most of the code presently assumes the connection is in virtual_machine however
-
-	def __init__(self, name, username, password):
-		self.name = name
-		self.username = username
-		self.password = password
-		return None
-
-	def connect(self):
-		# Connect and auth
-		xenurl = "https://" + str(self.name)
-		# if self.verbose: print "Connecting to " + str(host) + "..."
-		# try:
-		session = XenAPI.Session(xenurl)
-		session.xenapi.login_with_password(self.username, self.password)
-
-		# except:
-		# message = 'Failed to connect to "' + host + '"'
-		# print message
-		# exit()
-
-		self.session = session
-		return session
-
-	def disconnect(self):
-		self.session.xenapi.logout()
-		return 0
-
-	def get_pool(self):
-		# Expect only one pool on a host, i.e. a 1:1 relationship. Thus it should be OK to keep them in the same class
-		# However judging by the fact that the API returns list, it appears to be possible to have more than one pool per host.
-		pools = self.session.xenapi.pool.get_all()
-		pool = self.session.xenapi.pool.get_record(pools[0])
-		pool_name = pool["name_label"]
-		self.pool = pool_name
-		return pool_name
-
-	def get_vms(self):
-		vms = self.session.xenapi.VM.get_all()
-		return vms
-
-	def get_vm(self, vm_name):
-		# Returns a list but we keep names unique...
-		vms = self.session.xenapi.VM.get_by_name_label(vm_name)
-
-		# Don't like notifying here but it's easier this way...
-		if len(vms) > 1:
-			print("Found more than one VM with name/label " + vm_name + ", using the first")
-		if len(vms) == 0:
-			return None
-		return vms[0]
 
 
 
