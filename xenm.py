@@ -8,7 +8,7 @@ from subprocess import call # for external system calls
 import socket				# for socket.getfqdn()
 
 # Our modules
-from class_vm import virtual_machine
+# from class_vm import virtual_machine
 from class_vm import block_device
 from class_vm import disk_image
 from class_vm import host
@@ -83,29 +83,21 @@ def action_list():
 
 def action_pools():
 	# This function should list all pools
-	# Badly misuses the virtual_machine class... should really be a different class altogether
 
 	header=[['name_label', 'host'],['----------','----']]
 	data_pools=[]
 
-	for host in hosts:
-		# First instantiate a dummy virtual_machine object to get a connection
-		myhost = xen_vm("dummy", verbose)
-		myvm.connect_host(host, username, password)
+	for host_name in hosts:
+		# Create new host object and connect
+		myhost = host(host_name, username, password)
+		myhost.connect()
 
 		try:
-			# Get pools - ASSUMING ONLY ONE POOL PER HOST
-			pools = myvm.session.xenapi.pool.get_all()
-			if len(pools) > 1: error("Expecting only one pool on a host")
-
-			# Get the name of the pool on this host
-			pool = myvm.session.xenapi.pool.get_record(pools[0])
-			pool_name = pool["name_label"]
-
-			data_pools.append([pool_name,host])
+			pool_name = myhost.get_pool()
+			data_pools.append([pool_name,host_name])
 
 		finally:
-			myvm.disconnect_host()
+			myhost.disconnect()
 
 	if verbose: print("") # Add line between verbose messages and output - looks neater
 
@@ -121,134 +113,196 @@ def action_pools():
 def action_start():
 
 	global vmname
-	global host
 
 	vmname = args.vmname
-	host = get_host(vmname)
+	host_name = get_host(vmname)
 
-	# Create new VM object and connect
-	vm = virtual_machine(vmname, verbose)
-	vm.connect_host(host, username, password)
+	if host_name == None:
+		error(vmname + " does not exist on any defined hosts")
+
+	# Create new host object and connect
+	myhost = host(host_name, username, password)
+	myhost.connect()
+
+	# Get vm_id
+	vm_id = myhost.get_vm(vmname)
+
+	# Create xen_vm object
+	myvm = xen_vm(myhost, vm_id)
+	myvm.read_from_xen()
 
 	try:
-		result = power_on(vm)
+		result = power_on(myvm)
 	finally:
-		vm.disconnect_host()
+		myhost.disconnect()
 
 	return result
 
 def power_on(vm):
-	check_result = vm.preflight()
+
+	check_result = vm.read_from_xen()
+
 	if check_result == 0:
 		print("Starting " + vm.name + "...")
 		result = vm.start()
 		if result == 0:
 			print("Start succeeded")
+			return result
+		elif result == 1:
+			notify("VM already running")
+			return result
 		else:
-			error(result)
+			error("Unknown return value from vm.start()")
 	else:
+		notify("Check failed")
 		return check_result
-	return 0
 
 def action_stop():
+
 	global vmname
-	global host
 
 	vmname = args.vmname
-	host = get_host(vmname)
+	host_name = get_host(vmname)
 
-	if host == None:
-		error("VM does not exist")
+	if host_name == None:
+		error(vmname + " does not exist on any defined hosts")
 
-	# Create new VM object and connect
-	vm = virtual_machine(vmname, verbose)
-	vm.connect_host(host, username, password)
+	# Create new host object and connect
+	myhost = host(host_name, username, password)
+	myhost.connect()
+
+	# Get vm_id
+	vm_id = myhost.get_vm(vmname)
+
+	# Create xen_vm object
+	myvm = xen_vm(myhost, vm_id)
 
 	try:
-		result = shutdown(vm)
+		myvm.read_from_xen()
+		result = shutdown(myvm)
 	finally:
-		vm.disconnect_host()
+		myhost.disconnect()
+
+	return result
 
 def shutdown(vm):
-	check_result = vm.preflight()
+
+	check_result = vm.read_from_xen()
+
 	if check_result == 0:
 		print("Stopping " + vm.name + "...")
 		result = vm.clean_shutdown()
 		if result == 0:
 			print("Stop succeeded")
+			return result
 		elif result == 1:
-			notify("VM is not running")
+			notify("VM already halted")
+			return result
 		else:
-			error("Unknown error")
+			error("Unknown return value from vm.clean_shutdown()")
 	else:
+		notify("Check failed")
 		return check_result
-	return 0
 
 def action_restart():
+
 	global vmname
-	global host
 
 	vmname = args.vmname
-	host = get_host(vmname)
+	host_name = get_host(vmname)
 
-	# Create new VM object and connect
-	vm = virtual_machine(vmname, verbose)
-	vm.connect_host(host, username, password)
+	if host_name == None:
+		error(vmname + " does not exist on any defined hosts")
+
+	# Create new host object and connect
+	myhost = host(host_name, username, password)
+	myhost.connect()
+
+	# Get vm_id
+	vm_id = myhost.get_vm(vmname)
+
+	# Create xen_vm object
+	myvm = xen_vm(myhost, vm_id)
+	myvm.read_from_xen()
 
 	try:
-		check_result = vm.preflight()
-		if check_result == 0:
-			result = vm.clean_reboot()
-			if result == 0:
-				print("Restart succeeded")
-			else:
-				error(result)
-		else:
-			return check_result
+		if myvm.power_state == "Running":
+			result = clean_reboot(myvm)
+		elif myvm.power_state == "Halted":
+			notify(myvm.name + " was halted")
+			result = power_on(myvm)
 	finally:
-		vm.disconnect_host()
+		myhost.disconnect()
+
+	return result
+
+def clean_reboot(vm):
+
+	check_result = vm.read_from_xen()
+
+	if check_result == 0:
+		print("Restarting " + vm.name + "...")
+		result = vm.clean_reboot()
+		if result == 0:
+			print("Reboot succeeded")
+		elif result == 1:
+			notify("reboot failed")
+		else:
+			error("Unknown return value from vm.clean_reboot()")
+		return result
+	else:
+		notify("Check failed")
+		return check_result
 
 def action_remove():
 
-
 	global vmname
-	global host
 
-	# Get name from args
 	vmname = args.vmname
-	host = get_host(vmname)
+	host_name = get_host(vmname)
 
-	if host == None:
-		error("VM does not exist")
+	if host_name == None:
+		error(vmname + " does not exist on any defined hosts")
 
-	vm = virtual_machine(vmname, verbose)
-	vm.connect_host(host, username, password)
+	# Create new host object and connect
+	myhost = host(host_name, username, password)
+	myhost.connect()
+
+	# Get vm_id
+	vm_id = myhost.get_vm(vmname)
+
+	# Create xen_vm object
+	myvm = xen_vm(myhost, vm_id)
+	myvm.read_from_xen()
 
 	try:
-		shutdown(vm)
-		remove_disks(vm)
-		destroy(vm)
-		puppet_clean(vm)
+		shutdown(myvm)
+		remove_disks(myvm)
+		destroy(myvm)
+		puppet_clean(myvm)
 	finally:
-		vm.disconnect_host()
+		myhost.disconnect()
 
 def destroy(vm):
 
-	vm.read_id()
-	vm.read_from_xen()
+	check_result = vm.read_from_xen()
 
-	print("Removing " + vmname + " from " + host + "...")
+	if check_result == 0:
+		print("Removing " + vm.name + " from " + vm.host.name + "...")
 
-	result = vm.destroy()
-	if result == "":
-		print("Remove succeeded")
-		return 0
-	else:
-		return result
+		result = vm.destroy()
+		if result == 0:
+			print("Remove succeeded")
+			return 0
+		else:
+			return result
 
 def remove_disks(vm):
 	# Remove all disks from a VM.
 	vbd_ids = vm.read_vbds()
+
+	if len(vbd_ids) == 0:
+		notify(vm.name + "has no disks to remove")
 
 	# vms can have multiple vbds so we loop over them
 	for id in vbd_ids:
@@ -283,126 +337,217 @@ def action_spawn():
 	# Would be nice if this also set the name_label on associated VDIs.
 
 	global vmname
-	global host
+	global hosts
+	global template
 
 	# Get name from args, it is required from the CLI for this function
 	vmname = args.vmname
 
 	# for spawn, we can only work with a single host
+	host_name = hosts[0]
+
+	# instantiate host
+	myhost = host(host_name, username, password)
+	myhost.connect()
+	myhost.get_pool()
+
 	if len(hosts) > 1:
 		#error("Spawn requires that only one host is set, define a single host on the command line with the --host option")
 		# We take the first one instead:
-		notify("host was not set explicitly, using " + hosts[0] + " cluster to spawn VM")
-	host = hosts[0]
-
-	# object for new vm - new so we don't fetch any attrs
-	vm = virtual_machine(vmname, verbose)
-	vm.connect_host(host, username, password)
-
-	# object for the template (to get the ID and make sure it is valid)
-	mytemplate = virtual_machine(template, verbose)
-	mytemplate.connect_host(host, username, password)
-
-	# get the template attributes from xen into the object
-	mytemplate.read_id()
-	mytemplate.read_from_xen()
+		notify("Host was not set explicitly, using " + myhost.pool + " (" + myhost.name + ") to spawn VM")
 
 	try:
-		clone_from_template(mytemplate, vm)
-		set_ha_properties(vm)
-		power_on(vm)
-	finally:
-		vm.disconnect_host()
-		mytemplate.disconnect_host()
+		# get id of template
+		template_id = myhost.get_vm(template)
 
-def clone_from_template(mytemplate, vm):
+		# Check template exists
+		if template_id == None:
+			error("Template " + template + " does not exist on pool " + myhost.pool)
+
+		# object for the template (to get the ID and make sure it is valid)
+		mytemplate = xen_vm(myhost, template_id)
+		# get the template attributes from xen into the object
+		mytemplate.read_from_xen()
+
+		# Check vmname doesn't already exist
+		check = myhost.get_vm(vmname)
+		if check != None:
+			error(vmname + " already exists")
+
+		newvm = clone_from_template(mytemplate, vmname)
+		newvm.read_from_xen()
+
+		print(newvm.name, newvm.power_state)
+
+		set_ha_properties(newvm)
+		power_on(newvm)
+	finally:
+		myhost.disconnect()
+
+def clone_from_template(mytemplate, vm_name):
+	''' Inputs:	mytemplate	==	template xen_vm object (must have a host)
+				vm_name		==	string, name of vm
+		Returns: xen_vm object (created from the clone)
+	'''
+
+	# Check that we don't already have a valid vm with the same name
+	check = mytemplate.host.get_vm(vm_name)
+	if check != None:
+		error(vm_name + " already exists")
+
 	# Make sure template VM is actually a template
 	is_template = mytemplate.get_template_status()
-	check_vm = vm.read_id()
-	mytemplate.read_id()
-
-	if len(str(check_vm)) == 46:
-		error("VM already exists, try respawn")
 	if is_template == False:
 		error("Template VM given is not a template")
 	elif is_template == True:
-		# Create new VM object and connect
-		vm = virtual_machine(vmname, verbose)
-		vm.connect_host(host, username, password)
+		print("Cloning " + mytemplate.name + " to " + vm_name + "...")
+		new_id = mytemplate.clone(mytemplate.id, vm_name)
 
-		print("Cloning " + template + " to " + vmname + "...")
-		vm.clone(mytemplate.id)
-		myid = vm.read_id()
+		# Instantiate a new VM object with the VM we just created by cloning. Pass through host object of the template
+		myvm = xen_vm(mytemplate.host,new_id)
+
+		check = myvm.read_from_xen()
+		if check != 0:
+			error("Clone failed")
 
 		# Cloned VMs are made as templates, we need to set is_a_template to false
-		vm.set_template_status(False)
+		if myvm.is_a_template == True:
+			myvm.set_template_status(False)
+		elif myvm.is_a_template == False:
+			notify("Expected new clone to be a template but this was not the case, investigate?")
+		else:
+			error("Could not get template status of " + myvm.name)
 
-	else: error("Unexpected return value from get_template_status")
-	return 0
+	else: error("Could not get template status of " + mytemplate.name)
+
+	# return the new vm object
+	return myvm
 
 def action_respawn():
+	# Function to respawn an existing VM from template
+
 	global vmname
-	global host
 	global hosts
+	global template
 
-	# Get name from args
+	# Get name from args, it is required from the CLI for this function
 	vmname = args.vmname
-	host = get_host(vmname)
 
-	if host == None:
-		error("VM does not exist")
+	# for spawn, we can only work with a single host
+	host_name = hosts[0]
 
-	# Spawn requires that only one host is in the hosts array, so indulge it by overwriting the list with the output from get_host:
-	del hosts
-	hosts = [host]
+	# instantiate host
+	myhost = host(host_name, username, password)
+	myhost.connect()
+	myhost.get_pool()
 
-	# Setup objects
-	vm = virtual_machine(vmname, verbose)
-	vm.connect_host(host, username, password)
-	mytemplate = virtual_machine(template, verbose)
-	mytemplate.connect_host(host, username, password)
+	if len(hosts) > 1:
+		#error("Spawn requires that only one host is set, define a single host on the command line with the --host option")
+		# We take the first one instead:
+		notify("Host was not set explicitly, using " + myhost.pool + " (" + myhost.name + ") to spawn VM")
 
 	try:
-		mytemplate.read_id()
-		mytemplate.read_from_xen
+		# get id of template
+		template_id = myhost.get_vm(template)
+		vm_id = myhost.get_vm(vmname)
 
-		shutdown(vm)
-		destroy(vm)
-		puppet_clean(vm)
-		clone_from_template(mytemplate, vm)
-		set_ha_properties(vm)
-		power_on(vm)
+		# Check template exists
+		if template_id == None:
+			error("Template " + template + " does not exist on pool " + myhost.pool)
+
+		# Check vm exists
+		check = myhost.get_vm(vmname)
+		if check == None:
+			error(vmname + " does not exist")
+
+		# object for the template (to get the ID and make sure it is valid)
+		mytemplate = xen_vm(myhost, template_id)
+		# get the template attributes from xen into the object
+		mytemplate.read_from_xen()
+
+		# object for the existing vm
+		myvm = xen_vm(myhost, vm_id)
+		myvm.read_from_xen()
+
+		# ready to go, destroy
+		result = shutdown(myvm)
+		if result != 0: notify("Failed to shut down " + myvm.name)
+
+		result = remove_disks(myvm)
+		if result != 0: error("Failed to remove disks from " + myvm.name)
+
+		result = destroy(myvm)
+		if result != 0: error("Failed to remove vm " + myvm.name)
+
+		result = puppet_clean(myvm)
+
+		# clone a new one
+		newvm = clone_from_template(mytemplate, vmname)
+		newvm.read_from_xen()
+
+		# Set HA and power on
+		set_ha_properties(newvm)
+		power_on(newvm)
+
 	finally:
-		vm.disconnect_host
-		mytemplate.disconnect_host
+		myhost.disconnect()
+
+	# try:
+	# 	mytemplate.read_id()
+	# 	mytemplate.read_from_xen
+
+	# 	shutdown(vm)
+	# 	destroy(vm)
+	# 	puppet_clean(vm)
+	# 	clone_from_template(mytemplate, vm)
+	# 	set_ha_properties(vm)
+	# 	power_on(vm)
+	# finally:
+	# 	vm.disconnect_host
+	# 	mytemplate.disconnect_host
 
 def action_enforce():
 	global vmname
 	global host
 
+	# Get name from args, it is required from the CLI for this function
 	vmname = args.vmname
-	host = get_host(vmname)
+	host_name = get_host(vmname)
 
-	vm = virtual_machine(vmname, verbose)
-	vm.connect_host(host, username, password)
+	if host_name == None:
+		error(vmname + " does not exist on any defined hosts")
+
+	# Create new host object and connect
+	myhost = host(host_name, username, password)
+	myhost.connect()
 
 	try:
-		set_ha_properties(vm)
+		# Get vm_id
+		vm_id = myhost.get_vm(vmname)
+
+		# Create xen_vm object
+		myvm = xen_vm(myhost, vm_id)
+		myvm.read_from_xen()
+
+		# Do it
+		set_ha_properties(myvm)
 	finally:
-		vm.disconnect_host()
+		myhost.disconnect()
 
 def set_ha_properties(vm):
-	print("Setting HA priorities...")
+
 	count = 0
 
+	# Read csv file
 	with open(vmlist, 'rb') as csvfile:
 		reader = csv.reader(csvfile, delimiter=' ')
 
 		for row in reader:
+			# See if this is the row we want
 			if row[1] == vmname:
 				count += 1
 
-				check_result = vm.preflight()
+				check_result = vm.read_from_xen()
 				if check_result == 0:
 					# Check order and set if it is not what it should be
 					current_order = vm.get_order()
@@ -410,14 +555,15 @@ def set_ha_properties(vm):
 
 					if int(order) != int(current_order):
 						vm.set_order(str(order))
-						if verbose: print("Changed order on " + vmname + " from " + str(current_order) + " to " + str(order))
+						if verbose: print("Changed order on " + vm.name + " from " + str(current_order) + " to " + str(order))
 
 				else:
+					# feed the problem back
 					return check_result
 			else:
 				continue
 		if count == 0:
-			"Did not find entry for" + vm.name + " in " + vmlist + ", skipping ha config"
+			print "Could not find entry for " + vm.name + " in " + vmlist + ", skipping ha config"
 
 
 def action_enforce_all():
@@ -443,6 +589,7 @@ def action_enforce_all():
 			ha_config[vmname + '_start_delay'] = start_delay
 
 	count = 0	# count for changes made
+
 	# ha_config is loaded, now to compare and set it
 	for host_name in hosts:
 		# Initialise the host
@@ -518,25 +665,31 @@ def get_host(vm_name):
 	if not str(vm_name): error("must pass vm_name to get_host")
 	host_list = []
 
-	for host in hosts:
-		# First instantiate a dummy virtual_machine object to get a connection
-		myvm = virtual_machine("dummy", verbose)
-		myvm.connect_host(host, username, password)
+	for host_name in hosts:
+		# Get a connection
+		myhost = host(host_name, username, password)
+		myhost.connect()
 
-		if verbose: print("Looking for " + vm_name + " on " + host)
+		if verbose: print("Looking for " + vm_name + " on " + host_name)
 		try:
-			# Get
-			myvm_id = myvm.session.xenapi.VM.get_by_name_label(vmname)
+			# Get vm id
+			vm_id = myhost.get_vm(vm_name)
 
-			if len(myvm_id) == 1:
-			 	host_list.append(host)
-
+			# kinda bad as
+			if vm_id == None:
+				# vm not found
+				pass
+			elif len(vm_id) == 46:
+				# found it
+			 	host_list.append(host_name)
 		finally:
-			myvm.disconnect_host()
+			myhost.disconnect()
 
 	if len(host_list) == 0:
+		print "Could not find " + vm_name + " on any hosts"
 		return None
 	if len(host_list) > 1:
+		print "Found " + vm_name + " on multiple hosts"
 		return 1
 	if len(host_list) == 1:
 		if verbose: print("Found " + vm_name + " on " + host_list[0])
@@ -544,19 +697,29 @@ def get_host(vm_name):
 	return 0
 
 def puppet_clean(vm):
+	# Get fully qualified domain from vm name
 	fqdn = socket.getfqdn(vm.name)
+
+	# Check puppet is on this box
+	if not os.path.isfile(puppet_path):
+		notify(puppet_path + " does not exist on this machine. Please run 'puppet cert clean " + fqdn + "' on nms")
+		# We could do an ssh call here....
+		return 1
+
 	if verbose: print("Cleaning up " + fqdn + " from puppet...")
 	return_code = call([puppet_path,"cert","clean",fqdn], shell=False)
+
 	if str(return_code) == "24":
 		# Puppet returns 24 when it can't find the hostname. Usually this is because it is not a fqdn,
 		# socket.getfqdn returns exactly what you give it if it can't find a fully-qualified host name.
 		notify("Could not find the hostname in puppet, ensure DNS entries are set correctly")
 	return return_code
 
-# First we need to parse the commandline arguments. We use Python's argparse.
+## end of functions
+
+# Parse the commandline arguments using Python's argparse.
 parser = argparse.ArgumentParser(description='Manages our Xen cluster', add_help=False)
 
-# parser.add_argument('action', help="action to perform")
 parser.add_argument("--password", "-p", help="root password for Xen Server (uses config if not set)")
 parser.add_argument("--configfile", "-c", help="config file to use (xenm.cfg by default)")
 parser.add_argument('--hosts', help='Xen host(s) to connect to. These hosts must be the master of their cluster. Separate multiple hosts with commas.')
@@ -671,9 +834,9 @@ if not os.path.isfile(vmlist):
 # Call the function selected by set_default(func=)
 result = args.func()
 
-# Analyse what is returned
-if result == 1:
-	error("function returned error code")
+# # Analyse what is returned
+# if result == 1:
+# 	error("function returned error code")
 
 exit()
 
