@@ -194,8 +194,6 @@ class xen_vm:
 		self.vbds = self.session.xenapi.VM.get_VBDs(self.id)
 		return self.vbds
 
-
-
 class block_device:
 	# Class for a virtual block device.
 	# Block devices are attached to VMs, could be a CDROM, hard disk, etc

@@ -377,8 +377,6 @@ def action_spawn():
 		newvm = clone_from_template(mytemplate, vmname)
 		newvm.read_from_xen()
 
-		print(newvm.name, newvm.power_state)
-
 		set_ha_properties(newvm)
 		power_on(newvm)
 	finally:
@@ -652,8 +650,59 @@ def action_enforce_all():
 	print("Changed " + str(count))
 
 def action_status():
-	error("Not implemented yet")
-	pass
+	global vmname
+
+	vmname = args.vmname
+	host_name = get_host(vmname)
+
+	if host_name == None:
+		error(vmname + " does not exist on any defined hosts")
+
+	header=[['name_label', 'pool', 'power_state', 'restart_priority', 'start_delay', 'order'],
+			['----------', '----', '-----------', '----------------', '-----------', '-----']]
+	data_vms=[]
+
+	# Create new host object and connect
+	myhost = host(host_name, username, password)
+	myhost.connect()
+
+	try:
+		# Get vm_id
+		vm_id = myhost.get_vm(vmname)
+
+		# Create xen_vm object
+		myvm = xen_vm(myhost, vm_id)
+		myvm.read_from_xen()
+
+		pool_name = myvm.host.get_pool()
+		record = myvm.get_record()
+
+		data_vms.append([
+			record["name_label"],
+			pool_name,
+			record["power_state"],
+			record["ha_restart_priority"],
+			record["start_delay"],
+			record["order"]
+				])
+
+		if verbose: print("")
+
+		col_width1 = max(len(word) for row in data_vms for word in row) + 2
+		col_width2 = max(len(word) for row in header for word in row) + 2
+
+		col_width = max(col_width1,col_width2)
+
+		for row in header:
+			print("".join(word.ljust(col_width) for word in row))
+		for row in data_vms:
+			print("".join(word.ljust(col_width) for word in row))
+
+
+	finally:
+		myhost.disconnect()
+
+	return 0
 
 ## Helper functions
 
