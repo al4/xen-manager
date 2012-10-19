@@ -527,12 +527,18 @@ def action_enforce():
 		myvm = xen_vm(myhost, vm_id)
 		myvm.read_from_xen()
 
-		# Do it
-		set_ha_properties(myvm)
+		# Check
+		check_result = myvm.read_from_xen()
+
+		if check_result == 0:
+			# Do it
+			set_ha_properties(myvm)
+		else:
+			error("Check failed")
 	finally:
 		myhost.disconnect()
 
-def set_ha_properties(vm):
+def set_ha_properties(myvm):
 
 	count = 0
 
@@ -540,29 +546,47 @@ def set_ha_properties(vm):
 	with open(vmlist, 'rb') as csvfile:
 		reader = csv.reader(csvfile, delimiter=' ')
 
+		# Get current values
+		current_order = myvm.get_order()
+		current_start_delay = myvm.start_delay
+		current_priority = myvm.ha_restart_priority
+
+		# Find out what the HA values should be
+		# Check the config file:
+		count = 0
 		for row in reader:
 			# See if this is the row we want
 			if row[1] == vmname:
 				count += 1
 
-				check_result = vm.read_from_xen()
-				if check_result == 0:
-					# Check order and set if it is not what it should be
-					current_order = vm.get_order()
-					order = row[0]
+				# Check order and set if it is not what it should be
 
-					if int(order) != int(current_order):
-						vm.set_order(str(order))
-						if verbose: print("Changed order on " + vm.name + " from " + str(current_order) + " to " + str(order))
+				order = row[0]
 
-				else:
-					# feed the problem back
-					return check_result
+				if int(order) != int(current_order):
+					myvm.set_order(str(order))
+					if verbose: print("Changed order on " + myvm.name + " from " + str(current_order) + " to " + str(order))
+
 			else:
 				continue
-		if count == 0:
-			print "Could not find entry for " + vm.name + " in " + vmlist + ", skipping ha config"
 
+	# if we didn't find the vm in the config, use defaults:
+	if count == 0:
+		print "Could not find entry for " + myvm.name + " in " + vmlist + ", using defaults"
+		order = default_order
+		start_delay = default_start_delay
+		priority = default_ha_restart_priority
+
+	# Now set them if they differ
+	if int(order) != int(current_order):
+		print(myvm.name + " order: " + str(current_order) + " => " + str(order))
+		myvm.set_order(str(order))
+	if int(current_start_delay) != int(start_delay):
+		print(myvm.name + " start_delay: " + str(current_start_delay) + " => " + str(start_delay))
+		myvm.set_start_delay(str(start_delay))
+	if str(current_priority) != str(priority):
+		print(myvm.name + " priority: " + str(current_priority) + " => " + str(priority))
+		myvm.set_ha_restart_priority(str(priority))
 
 def action_enforce_all():
 	# Loop over each VM on each host, look for appropriate entry in the CSV file, and fix if different
@@ -607,18 +631,19 @@ def action_enforce_all():
 
 				# Don't want to modify templates or control domains!
 				if myvm.is_control_domain == False and myvm.is_a_template == False:
-					# Check the values and set if different
+					# Check the values
 					current_order = myvm.order
 					current_start_delay = myvm.start_delay
 					current_priority = myvm.ha_restart_priority
 
 					if myvm.name + "_order" in ha_config:
-						# print(myvm.name + " is in config")
+						# this VM has config defined, set it
 						order = ha_config[myvm.name + '_order']
 						start_delay = ha_config[myvm.name + '_start_delay']
 						priority = ha_config[myvm.name + '_priority']
 
 						# Hack to set start_delay to "restart if possible" if order > 1000
+						# because we aren't defining this in config yet
 						if int(order) > 1000:
 							priority = 'best-effort'
 						else:
