@@ -804,12 +804,12 @@ def puppet_clean(vm):
 parser = argparse.ArgumentParser(description='Manages our Xen cluster', add_help=False)
 
 parser.add_argument("--password", "-p", help="root password for Xen Server (uses config if not set)")
-parser.add_argument("--configfile", "-c", help="config file to use (/etc/opta/xenm.cfg by default)")
+parser.add_argument("--configfile", "-c", help="config file to use (/etc/opta/xenm/xenm.cfg by default)")
 parser.add_argument('--hosts', help='Xen host(s) to connect to. These hosts must be the master of their cluster. Separate multiple hosts with commas.')
 parser.add_argument('--verbose', '-v', action='store_true', help='print more output')
 
 # Default options. It is reasonable to guess configfile, but host should be explicit in config or as argument
-parser.set_defaults(configfile='/etc/opta/xenm.cfg', hosts=None)
+parser.set_defaults(configfile='/etc/opta/xenm/xenm.cfg', hosts=None)
 
 # We setup subparsers for each mode
 subparsers = parser.add_subparsers(dest='action')
