@@ -50,7 +50,7 @@ def action_list():
             pool_name = myhost.get_pool()
 
             if verbose:
-                print("Getting VMs from " + host + "...")
+                print("Getting VMs from " + myhost.name + "...")
 
             vms = myhost.get_vms()
 
