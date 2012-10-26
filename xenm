@@ -859,7 +859,7 @@ config = ConfigParser.RawConfigParser()
 
 # If we haven't specified config file on command line, use default
 if not args.configfile:
-    configfile = 'xenm.cfg'
+    configfile = '/etc/opta/xenm.cfg'
 else:
     configfile = args.configfile
 
