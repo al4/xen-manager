@@ -9,9 +9,9 @@ all:
 
 install:
 	@mkdir -p $(DESTDIR)/etc/opta/
-	@rsync -a --delete --exclude '/.svn' --exclude '*/.svn' config/ $(DESTDIR)/etc/opta/
+	@rsync -a --delete --exclude '/.git' --exclude '*/.git' config/ $(DESTDIR)/etc/opta/
 	@mkdir -p $(DESTDIR)/usr/share/$(APPNAME)/htdocs/
-	@rsync -a --delete --exclude '/.svn' --exclude '*/.svn' htdocs/ $(DESTDIR)/usr/share/$(APPNAME)/htdocs/
+	@rsync -a --delete --exclude '/.git' --exclude '*/.git' htdocs/ $(DESTDIR)/usr/share/$(APPNAME)/htdocs/
 
 version:
 	@echo $(APPNAME)

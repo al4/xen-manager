@@ -8,11 +8,10 @@ from subprocess import call # for external system calls
 import socket               # for socket.getfqdn()
 
 # Our modules
-# from class_vm import virtual_machine
-from class_vm import block_device
-from class_vm import disk_image
-from class_vm import host
-from class_vm import xen_vm     # This is the same as virtual_machine but takes an ID as input and not a name.
+from xenm_class import block_device
+from xenm_class import disk_image
+from xenm_class import host
+from xenm_class import xen_vm     # This is the same as virtual_machine but takes an ID as input and not a name.
                             # This is the more "correct" way of doing things and functions should be
                             # updated to use this class instead
 

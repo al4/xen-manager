@@ -56,7 +56,6 @@ class host:
             return None
         return vms[0]
 
-
 class xen_vm:
     # This class should replace the original "virtual_machine" class that I originally wrote
     # It takes the ID as input and doesn't "guess" the ID from the name
