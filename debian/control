@@ -1,0 +1,10 @@
+Source: opta-xenm
+Maintainer: Alex Forbes <alex.forbes@optasports.com>
+
+Package: opta-xenm
+Architecture: all
+Section: non-free/misc
+Priority: optional
+Depends: ${misc:Depends}, python, python-argparse
+Description: Xen Manager
+ Tool for managing Xen Clusters

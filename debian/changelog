@@ -1,0 +1,5 @@
+opta-xenm (1.0.0) stable; urgency=low
+
+  * Initial Debian package
+
+ -- Alex Forbes <alex.forbes@optasports.com>  Fri, 26 Oct 2012 14:11:00 +0100
