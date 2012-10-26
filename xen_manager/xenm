@@ -539,6 +539,11 @@ def action_enforce():
 
 def set_ha_properties(myvm):
 
+    # Check the vm list is present
+    if not os.path.isfile(vmlist):
+        message = 'VM List "' + str(vmlist) + '" does not exist'
+        error(message)
+
     count = 0
 
     # Read csv file
@@ -589,6 +594,11 @@ def set_ha_properties(myvm):
 
 def action_enforce_all():
     # Loop over each VM on each host, look for appropriate entry in the CSV file, and fix if different
+
+    # Check the vm list is present
+    if not os.path.isfile(vmlist):
+        message = 'VM List "' + str(vmlist) + '" does not exist'
+        error(message)
 
     # Load CSV data into list
     with open (vmlist, 'rb') as csvfile:
@@ -794,12 +804,12 @@ def puppet_clean(vm):
 parser = argparse.ArgumentParser(description='Manages our Xen cluster', add_help=False)
 
 parser.add_argument("--password", "-p", help="root password for Xen Server (uses config if not set)")
-parser.add_argument("--configfile", "-c", help="config file to use (xenm.cfg by default)")
+parser.add_argument("--configfile", "-c", help="config file to use (/etc/opta/xenm.cfg by default)")
 parser.add_argument('--hosts', help='Xen host(s) to connect to. These hosts must be the master of their cluster. Separate multiple hosts with commas.')
 parser.add_argument('--verbose', '-v', action='store_true', help='print more output')
 
 # Default options. It is reasonable to guess configfile, but host should be explicit in config or as argument
-parser.set_defaults(configfile='xenm.cfg', hosts=None)
+parser.set_defaults(configfile='/etc/opta/xenm.cfg', hosts=None)
 
 # We setup subparsers for each mode
 subparsers = parser.add_subparsers(dest='action')
@@ -855,13 +865,8 @@ else:
     verbose=False
 
 # Get config options from xenm.cfg if not set on command line
+configfile = args.configfile
 config = ConfigParser.RawConfigParser()
-
-# If we haven't specified config file on command line, use default
-if not args.configfile:
-    configfile = '/etc/opta/xenm.cfg'
-else:
-    configfile = args.configfile
 
 # Check our config file exists
 if os.path.isfile(configfile):
@@ -895,14 +900,6 @@ if verbose: print('Hosts: ' + str(hosts))
 default_ha_restart_priority = config.get('HA Defaults', 'restart_priority')
 default_order = config.get('HA Defaults', 'order')
 default_start_delay = config.get('HA Defaults', 'start_delay')
-
-# Check the files specified are present
-if not os.path.isfile(vmlist):
-    message = 'File "' + str(vmlist) + '" does not exist'
-    error(message)
-
-# Debug line to dump out command line args
-# print vars(args)
 
 # Call the function selected by set_default(func=)
 result = args.func()
