@@ -11,9 +11,9 @@ install:
 	@mkdir -p $(DESTDIR)/etc/opta/
 	@rsync -a --delete config/ $(DESTDIR)/etc/opta/
 	@mkdir -p $(DESTDIR)/usr/share/$(APPNAME)/
-	@rsync -a xenm $(DESTDIR)/usr/share/$(APPNAME)/
 	@rsync -a --delete xen_manager/ $(DESTDIR)/usr/share/$(APPNAME)/
-	@ln -s /usr/share/$(APPNAME)/xenm /usr/local/bin/xenm
+	@mkdir -p $(DESTDIR)/usr/bin
+	@ln -s $(DESTDIR)/usr/share/$(APPNAME)/xenm $(DESTDIR)/usr/bin/xenm
 
 version:
 	@echo $(APPNAME)
