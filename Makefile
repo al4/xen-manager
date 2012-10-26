@@ -13,7 +13,7 @@ install:
 	@mkdir -p $(DESTDIR)/usr/share/$(APPNAME)/
 	@rsync -a --delete xen_manager/ $(DESTDIR)/usr/share/$(APPNAME)/
 	@mkdir -p $(DESTDIR)/usr/bin
-	@ln -s $(DESTDIR)/usr/share/$(APPNAME)/xenm $(DESTDIR)/usr/bin/xenm
+	@ln -sf /usr/share/$(APPNAME)/xenm $(DESTDIR)/usr/bin/xenm
 
 version:
 	@echo $(APPNAME)
