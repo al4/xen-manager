@@ -3,3 +3,4 @@ test.py
 xen_install.py
 *.pyc
 xenm.cfg
+config/*
