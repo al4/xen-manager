@@ -1,4 +1,8 @@
-opta-xenm (1.0.0) stable; urgency=low
+opta-xenm (1.0.1) stable; urgency=low
+
+  * Fixed parsing of --template, --password and --vlist on command line
+
+ -- Alex Forbes <alex.forbes@optasports.com>  Fri, 12 Nov 2012 15:03:00 +0100
 
   * Initial Debian package
 
