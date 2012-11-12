@@ -829,7 +829,7 @@ parent_parser_template = argparse.ArgumentParser(add_help=False)
 parent_parser_template.add_argument('--template', '-t', help='name of template to use')
 # parent_parser_template.set_defaults(template=None)
 
-# The subparsers, which should include one of the parents above
+# The subparsers, most of which include one of the parents above
 parser_list = subparsers.add_parser('list', help='list all VMs')
 parser_listpools = subparsers.add_parser('list-pools', help='list all pools')
 parser_start = subparsers.add_parser('start', help='starts a VM', parents=[parent_parser_onevm])
@@ -887,12 +887,12 @@ implants_file = config.get('Input', 'implants_file')
 # Override config if set on command line
 if args.hosts != None: # args.hosts is a list and and hasattr requires a string for some reason! So the default must be set above
     hosts = args.hosts.split(',')
-if hasattr(args, password):
+if hasattr(args, "password") and args.password != None:
     password = args.password
-if hasattr(args, template):
+if hasattr(args, "template") and args.template != None:
     template = args.template
-if hasattr(args, vmlist):
-    vllist = args.vmlist
+if hasattr(args, "vmlist") and args.template != None:
+    vmlist = args.vmlist
 
 if verbose: print('Hosts: ' + str(hosts))
 

@@ -13,7 +13,7 @@ config.set('Main', 'password', '')
 config.set('Main', 'puppet_path', '/usr/bin/puppet')			# Path to puppet binary (for cleaning certs)
 
 config.add_section('Input')
-# implants_file is the list of the implants with a priorities which we will calculate from
+# implants_file is the list of the implants with priorities which we calculate from
 config.set('Input', 'implants_file', '/etc/opta/xenm/implants.conf')
 # priorities_file is a file with VM names and priorities (this option is temporary until we can calculate from the implants_file)
 config.set('Input', 'vmlist', '/etc/opta/xenm/machinelist.conf')
