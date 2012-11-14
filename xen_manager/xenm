@@ -885,10 +885,14 @@ if args.hosts != None: # args.hosts is a list and and hasattr requires a string 
     hosts = args.hosts.split(',')
 if hasattr(args, "password") and args.password != None:
     password = args.password
-if hasattr(args, "template") and args.template != None:
-    template = args.template
-if hasattr(args, "vmlist") and args.template != None:
-    vmlist = args.vmlist
+# TEMP HACK:
+# These break for functions where the arg parser doesn't have the attribute, so they are commented out for now.
+# As a consequence template and vmlist can not be overridden on the command line
+
+# if hasattr(args, "template") and args.template != None:
+#     template = args.template
+# if hasattr(args, "vmlist") and args.template != None:
+#     vmlist = args.vmlist
 
 if verbose: print('Hosts: ' + str(hosts))
 
