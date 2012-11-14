@@ -563,14 +563,10 @@ def set_ha_properties(myvm):
             if row[1] == vmname:
                 count += 1
 
-                # Check order and set if it is not what it should be
-
+                # TODO: currently only the order is defined in the config file
                 order = row[0]
-
-                if int(order) != int(current_order):
-                    myvm.set_order(str(order))
-                    if verbose: print("Changed order on " + myvm.name + " from " + str(current_order) + " to " + str(order))
-
+                start_delay = 0         # This is not in the config file yet, may want to make it configurable later.
+                priority = "restart"    # Also not in the config file yet. But if the VM is in there we assume it is important, so always restart
             else:
                 continue
 
@@ -582,7 +578,7 @@ def set_ha_properties(myvm):
         priority = default_ha_restart_priority
 
     # Now set them if they differ
-    if int(order) != int(current_order):
+    if int(current_order) != int(order):
         print(myvm.name + " order: " + str(current_order) + " => " + str(order))
         myvm.set_order(str(order))
     if int(current_start_delay) != int(start_delay):
