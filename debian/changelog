@@ -1,8 +1,16 @@
+opta-xenm (1.0.2) stable; urgency=low
+
+  * Bugfix: set_ha_priorities failed when vm was defined in list
+
+ -- Alex Forbes <alex.forbes@optasports.com>  Fri, 14 Nov 2012 12:22:00 +0100
+
 opta-xenm (1.0.1) stable; urgency=low
 
   * Fixed parsing of --template, --password and --vlist on command line
 
  -- Alex Forbes <alex.forbes@optasports.com>  Fri, 12 Nov 2012 15:03:00 +0100
+
+opta-xenm (1.0.0) stable; urgency=low
 
   * Initial Debian package
 
