@@ -165,6 +165,22 @@ class xen_vm:
             self.session.xenapi.VM.clean_shutdown(self.id)
             return 0
 
+    def hard_shutdown(self):
+        if self.power_state != "Running":
+            return 1
+        else:
+            # Need more robust checking, wouldn't know if Xen returned an error
+            self.session.xenapi.VM.hard_shutdown(self.id)
+            return 0
+
+    def hard_reboot(self):
+        if self.power_state != "Running":
+            return 1
+        else:
+            # Need more robust checking, wouldn't know if Xen returned an error
+            self.session.xenapi.VM.hard_reboot(self.id)
+            return 0
+
     def clone(self, template, new_name):
         # template is a vm id/reference (usually self.id), as we should be calling clone from the template vm object
         # should return the id of the clone
