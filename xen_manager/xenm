@@ -203,6 +203,26 @@ def shutdown(vm):
         notify("Check failed")
         return check_result
 
+def hard_shutdown(vm):
+
+    check_result = vm.read_from_xen()
+
+    if check_result == 0:
+        print("Crashing " + vm.name + "...")
+        result = vm.hard_shutdown()
+        if result == 0:
+            print("Stop succeeded")
+            return result
+        elif result == 1:
+            notify("VM already halted")
+            return result
+        else:
+            error("Unknown return value from vm.clean_shutdown()")
+    else:
+        notify("Check failed")
+        return check_result
+
+
 def action_restart():
 
     global vmname
@@ -252,6 +272,26 @@ def clean_reboot(vm):
     else:
         notify("Check failed")
         return check_result
+
+
+def hard_reboot(vm):
+
+    check_result = vm.read_from_xen()
+
+    if check_result == 0:
+        print("Restarting " + vm.name + "...")
+        result = vm.hard_reboot()
+        if result == 0:
+            print("Reboot succeeded")
+        elif result == 1:
+            notify("reboot failed")
+        else:
+            error("Unknown return value from vm.clean_reboot()")
+        return result
+    else:
+        notify("Check failed")
+        return check_result
+
 
 def action_remove():
 
@@ -813,6 +853,7 @@ subparsers = parser.add_subparsers(dest='action')
 # Parent parser for modes which operate on a single VM
 parent_parser_onevm = argparse.ArgumentParser(add_help=False)
 parent_parser_onevm.add_argument('vmname', help='name of VM to perform action on')
+parent_parser_onevm.add_argument('--force', '-f', help='force the specified action (currently only works for stop and restart, which change the API methods to hard_shutdown and hard_reboot respectively)')
 # parent_parser_onevm.set_defaults(vmname=None)
 
 # Parent for modes which operate on multiple VMs
