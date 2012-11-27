@@ -466,7 +466,7 @@ def action_spawn():
         newvm = clone_from_template(mytemplate, vmname)
         newvm.read_from_xen()
 
-        set_ha_properties(newvm,vmlist)
+        set_ha_properties(newvm,args.vmlist)
         power_on(newvm)
     finally:
         myhost.disconnect()
@@ -661,11 +661,15 @@ def set_ha_properties(myvm, vmlist):
         # Find out what the HA values should be
         # Check the config file:
         count = 0
+
         for row in reader:
+            # Pass over rows with the incorrect number of fields
+            if len(row) != 2:
+                continue
+
             # See if this is the row we want
             if row[1] == myvm.name:
                 count += 1
-
                 # TODO: currently only the order is defined in the config file
                 order = row[0]
                 start_delay = 0         # This is not in the config file yet, may want to make it configurable later.
@@ -894,6 +898,8 @@ def get_host(vm_name):
     return 0
 
 def puppet_clean(vm):
+    global args
+
     # Get fully qualified domain from vm name
     fqdn = socket.getfqdn(vm.name)
 
@@ -904,7 +910,7 @@ def puppet_clean(vm):
         return 1
 
     if verbose: print("Cleaning up " + fqdn + " from puppet...")
-    return_code = call([puppet_path,"cert","clean",fqdn], shell=False)
+    return_code = call([args.puppet_path,"cert","clean",fqdn], shell=False)
 
     if str(return_code) == "24":
         # Puppet returns 24 when it can't find the hostname. Usually this is because it is not a fqdn,
