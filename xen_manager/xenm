@@ -34,6 +34,12 @@ def notify(message):
 ### Functions for the sub-commands
 def action_list():
     # Polls all Xen servers to gather data
+    global args
+
+    hosts=args.hosts
+    username=args.username
+    password=args.password
+    puppet_path=args.puppet_path
 
     # Lists which we append to (start with headings in first row)
     header=[['name_label', 'pool', 'power_state', 'restart_priority', 'start_delay', 'order'],
@@ -81,7 +87,13 @@ def action_list():
     return data_vms
 
 def action_pools():
-    # This function should list all pools
+    # Lists all pools
+
+    global args
+
+    hosts=args.hosts
+    username=args.username
+    password=args.password
 
     header=[['name_label', 'host'],['----------','----']]
     data_pools=[]
@@ -110,10 +122,16 @@ def action_pools():
     return data_pools
 
 def action_start():
+    # TODO: check that all args are set
+    global args
 
-    global vmname
-
+    # Store config options in variables
+    hosts = args.hosts
+    username = args.username
+    password = args.password
     vmname = args.vmname
+
+    # Get host name
     host_name = get_host(vmname)
 
     if host_name == None:
@@ -158,7 +176,13 @@ def power_on(vm):
 
 def action_stop():
 
-    global vmname
+    global args
+
+    # Store config options in variables
+    hosts = args.hosts
+    username = args.username
+    password = args.password
+    vmname = args.vmname
 
     vmname = args.vmname
     host_name = get_host(vmname)
@@ -224,8 +248,13 @@ def hard_shutdown(vm):
 
 
 def action_restart():
+    global args
 
-    global vmname
+    # Store config options in variables
+    hosts = args.hosts
+    username = args.username
+    password = args.password
+    vmname = args.vmname
 
     vmname = args.vmname
     host_name = get_host(vmname)
@@ -295,9 +324,16 @@ def hard_reboot(vm):
 
 def action_remove():
 
-    global vmname
+    global args
 
+    # Store config options in variables
+    hosts = args.hosts
+    username = args.username
+    password = args.password
     vmname = args.vmname
+    puppet_path = args.puppet_path
+
+    # Get the host this vm resides on
     host_name = get_host(vmname)
 
     if host_name == None:
@@ -375,12 +411,16 @@ def action_spawn():
     # Function to spawn a new VM from template
     # Would be nice if this also set the name_label on associated VDIs.
 
-    global vmname
-    global hosts
-    global template
+    global args
 
-    # Get name from args, it is required from the CLI for this function
+    # Store config options in variables
+    hosts = args.hosts
+    username = args.username
+    password = args.password
     vmname = args.vmname
+    puppet_path = args.puppet_path
+    template = args.template
+    vmlist = args.vmlist
 
     # for spawn, we can only work with a single host
     host_name = hosts[0]
@@ -416,7 +456,7 @@ def action_spawn():
         newvm = clone_from_template(mytemplate, vmname)
         newvm.read_from_xen()
 
-        set_ha_properties(newvm)
+        set_ha_properties(newvm,vmlist)
         power_on(newvm)
     finally:
         myhost.disconnect()
@@ -463,12 +503,16 @@ def clone_from_template(mytemplate, vm_name):
 def action_respawn():
     # Function to respawn an existing VM from template
 
-    global vmname
-    global hosts
-    global template
+    global args
 
-    # Get name from args, it is required from the CLI for this function
+    # Store config options in variables
+    hosts = args.hosts
+    username = args.username
+    password = args.password
     vmname = args.vmname
+    puppet_path = args.puppet_path
+    template = args.template
+    vmlist = args.vmlist
 
     # for spawn, we can only work with a single host
     host_name = hosts[0]
@@ -523,7 +567,7 @@ def action_respawn():
         newvm.read_from_xen()
 
         # Set HA and power on
-        set_ha_properties(newvm)
+        set_ha_properties(newvm,vmlist)
         power_on(newvm)
 
     finally:
@@ -544,8 +588,16 @@ def action_respawn():
     #   mytemplate.disconnect_host
 
 def action_enforce():
-    global vmname
-    global host
+    global args
+
+    # Store config options in variables
+    hosts = args.hosts
+    username = args.username
+    password = args.password
+    vmname = args.vmname
+    puppet_path = args.puppet_path
+    template = args.template
+    vmlist = args.vmlist
 
     # Get name from args, it is required from the CLI for this function
     vmname = args.vmname
@@ -577,7 +629,8 @@ def action_enforce():
     finally:
         myhost.disconnect()
 
-def set_ha_properties(myvm):
+def set_ha_properties(myvm, vmlist):
+    # Sets the HA properties of a VM. Inputs: vm object, vmlist (string containing path to CSV file containing VMs and HA priorites)
 
     # Check the vm list is present
     if not os.path.isfile(vmlist):
@@ -600,7 +653,7 @@ def set_ha_properties(myvm):
         count = 0
         for row in reader:
             # See if this is the row we want
-            if row[1] == vmname:
+            if row[1] == myvm.name:
                 count += 1
 
                 # TODO: currently only the order is defined in the config file
@@ -630,6 +683,14 @@ def set_ha_properties(myvm):
 
 def action_enforce_all():
     # Loop over each VM on each host, look for appropriate entry in the CSV file, and fix if different
+
+    global args
+
+    # Store config options in variables
+    hosts = args.hosts
+    username = args.username
+    password = args.password
+    vmlist = args.vmlist
 
     # Check the vm list is present
     if not os.path.isfile(vmlist):
@@ -720,7 +781,14 @@ def action_enforce_all():
     print("Changed " + str(count))
 
 def action_status():
-    global vmname
+    global args
+
+    # Store config options in variables
+    hosts = args.hosts
+    username = args.username
+    password = args.password
+    vmname = args.vmname
+    vmlist = args.vmlist
 
     vmname = args.vmname
     host_name = get_host(vmname)
@@ -784,9 +852,9 @@ def get_host(vm_name):
     if not str(vm_name): error("must pass vm_name to get_host")
     host_list = []
 
-    for host_name in hosts:
+    for host_name in args.hosts:
         # Get a connection
-        myhost = host(host_name, username, password)
+        myhost = host(host_name, args.username, args.password)
         myhost.connect()
 
         if verbose: print("Looking for " + vm_name + " on " + host_name)
@@ -820,8 +888,8 @@ def puppet_clean(vm):
     fqdn = socket.getfqdn(vm.name)
 
     # Check puppet is on this box
-    if not os.path.isfile(puppet_path):
-        notify(puppet_path + " does not exist on this machine. Please run 'puppet cert clean " + fqdn + "' on nms")
+    if not os.path.isfile(args.puppet_path):
+        notify(args.puppet_path + " does not exist on this machine. Please run 'puppet cert clean " + fqdn + "' on nms")
         # We could do an ssh call here....
         return 1
 
@@ -837,12 +905,14 @@ def puppet_clean(vm):
 ## end of functions
 
 # Parse the commandline arguments using Python's argparse.
-parser = argparse.ArgumentParser(description='Manages our Xen cluster', add_help=False)
+parser = argparse.ArgumentParser(description='Manages our Xen cluster. First positional argument is action, use {action} -h for more help.')
 
-parser.add_argument("--password", "-p", help="root password for Xen Server (uses config if not set)")
 parser.add_argument("--configfile", "-c", help="config file to use (/etc/opta/xenm/xenm.cfg by default)")
+parser.add_argument("--username", "-u", help="user name for Xen Server (default set in config")
+parser.add_argument("--password", "-p", help="root password for Xen Server (default set in config)") # Username is not configurable on the CLI at present as our license only allows root access.
 parser.add_argument('--hosts', help='Xen host(s) to connect to. These hosts must be the master of their cluster. Separate multiple hosts with commas.')
-parser.add_argument('--verbose', '-v', action='store_true', help='print more output')
+parser.add_argument('--vmlist', help='CSV file with a list of VMs and priorities')
+parser.add_argument('--verbose', '-v', action='store_true', default=False, help='print more output')
 
 # Default options. It is reasonable to guess configfile, but host should be explicit in config or as argument
 parser.set_defaults(configfile='/etc/opta/xenm/xenm.cfg', hosts=None)
@@ -853,13 +923,8 @@ subparsers = parser.add_subparsers(dest='action')
 # Parent parser for modes which operate on a single VM
 parent_parser_onevm = argparse.ArgumentParser(add_help=False)
 parent_parser_onevm.add_argument('vmname', help='name of VM to perform action on')
-parent_parser_onevm.add_argument('--force', '-f', help='force the specified action (currently only works for stop and restart, which change the API methods to hard_shutdown and hard_reboot respectively)')
+parent_parser_onevm.add_argument('--force', '-f', action='store_true', default=False, help='force the specified action (currently only works for stop and restart; changes the API methods to hard_shutdown and hard_reboot respectively)')
 # parent_parser_onevm.set_defaults(vmname=None)
-
-# Parent for modes which operate on multiple VMs
-parent_parser_multivm = argparse.ArgumentParser(add_help=False)
-parent_parser_multivm.add_argument('--vmlist', help='CSV file with a list of VMs and priorities')
-# parent_parser_multivm.set_defaults(vmlist=None)
 
 # Parent for any option that uses a template
 parent_parser_template = argparse.ArgumentParser(add_help=False)
@@ -869,19 +934,21 @@ parent_parser_template.add_argument('--template', '-t', help='name of template t
 # The subparsers, most of which include one of the parents above
 parser_list = subparsers.add_parser('list', help='list all VMs')
 parser_listpools = subparsers.add_parser('list-pools', help='list all pools')
+parser_pools = subparsers.add_parser('pools', help='alias for list-pools')   # Alias of list-pools
 parser_start = subparsers.add_parser('start', help='starts a VM', parents=[parent_parser_onevm])
-parser_stop = subparsers.add_parser('stop', help='performs a clean shutdown', parents=[parent_parser_onevm])
+parser_stop = subparsers.add_parser('stop', help='performs a shutdown, clean unless force is set', parents=[parent_parser_onevm])
 parser_status = subparsers.add_parser('status', help='shows the status of a VM', parents=[parent_parser_onevm])
-parser_restart = subparsers.add_parser('restart', help='performs a clean reboot', parents=[parent_parser_onevm])
+parser_restart = subparsers.add_parser('restart', help='performs a reboot, clean unless force is set', parents=[parent_parser_onevm])
 parser_remove = subparsers.add_parser('remove', help='removes a VM', parents=[parent_parser_onevm])
 parser_spawn = subparsers.add_parser('spawn', help='spawns a new VM', parents=[parent_parser_onevm, parent_parser_template])
 parser_respawn = subparsers.add_parser('respawn', help='removes and spawns a new copy of a VM', parents=[parent_parser_onevm, parent_parser_template])
 parser_enforce = subparsers.add_parser('enforce', help='enforce the HA policy on one VM', parents=[parent_parser_onevm])
-parser_enforce_all = subparsers.add_parser('enforce-all', help='check the HA policy on all VMs and enforce the policy (config must be set)', parents=[parent_parser_multivm])
+parser_enforce_all = subparsers.add_parser('enforce-all', help='check the HA policy on all VMs and enforce the policy (config must be set)')
 
 # Set the functions to be called by each sub-parser
 parser_list.set_defaults(func=action_list)
 parser_listpools.set_defaults(func=action_pools)
+parser_pools.set_defaults(func=action_pools)
 parser_start.set_defaults(func=action_start)
 parser_stop.set_defaults(func=action_stop)
 parser_status.set_defaults(func=action_status)
@@ -892,14 +959,8 @@ parser_respawn.set_defaults(func=action_respawn)
 parser_enforce.set_defaults(func=action_enforce)
 parser_enforce_all.set_defaults(func=action_enforce_all)
 
+# We parse here to get the configfile, but it is overwritten later
 args = parser.parse_args()
-
-# Set verbose mode. args.verbose is set by action='store_true' option in parser.
-if args.verbose:
-    verbose=True
-    print("Verbose on")
-else:
-    verbose=False
 
 # Get config options from xenm.cfg if not set on command line
 configfile = args.configfile
@@ -912,20 +973,27 @@ else:
     message = 'Config file "' + str(configfile) + '" does not exist'
     error(message)
 
-# Get config options
-hosts = config.get('Main', 'hosts').split(',')
-username = config.get('Main', 'username')
-password = config.get('Main', 'password')
-puppet_path = config.get('Main', 'puppet_path')
-template = config.get('Input', 'template')
-vmlist = config.get('Input', 'vmlist')
-implants_file = config.get('Input', 'implants_file')
 
+
+# Set parser defaults from configfile before we parse
+parser.set_defaults(
+    username=config.get('Main', 'username'),
+    password=config.get('Main', 'password'),
+    hosts=config.get('Main', 'hosts').split(','),
+    vmlist=config.get('Input', 'vmlist'),
+    puppet_path=config.get('Main', 'puppet_path'),       # not exposed on CLI as wouldn't really be used...
+    implants_file=config.get('Input', 'implants_file')  # Not currently used
+    )
+parent_parser_template.set_defaults(
+    template=config.get('Input', 'template')
+    )
+
+## Old code. Better to set the defaults using config file as above and parse with defaults set
 # Override config if set on command line
-if args.hosts != None: # args.hosts is a list and and hasattr requires a string for some reason! So the default must be set above
-    hosts = args.hosts.split(',')
-if hasattr(args, "password") and args.password != None:
-    password = args.password
+# if args.hosts != None: # args.hosts is a list and and hasattr requires a string for some reason! So the default must be set above
+#     hosts = args.hosts.split(',')
+# if hasattr(args, "password") and args.password != None:
+#     password = args.password
 # TEMP HACK:
 # These break for functions where the arg parser doesn't have the attribute, so they are commented out for now.
 # As a consequence template and vmlist can not be overridden on the command line
@@ -935,7 +1003,27 @@ if hasattr(args, "password") and args.password != None:
 # if hasattr(args, "vmlist") and args.template != None:
 #     vmlist = args.vmlist
 
-if verbose: print('Hosts: ' + str(hosts))
+# Parse the arguments
+args = parser.parse_args()
+
+# Store config options in variables
+# hosts = args.hosts
+# username = config.get('Main', 'username')       # not in args anywhere so get straight from config
+# password = args.password
+# puppet_path = config.get('Main', 'puppet_path')# not in args anywhere so get straight from config
+# template = args.template
+# vmlist = args.vmlist
+# implants_file = config.get('Input', 'implants_file') # Not currently used
+
+# Set verbose mode. args.verbose is set by action='store_true' option in parser.
+if args.verbose:
+    verbose=True
+    print("Verbose on")
+    pp.pprint(vars(args))
+else:
+    verbose=False
+
+if verbose: print('Hosts: ' + str(args.hosts))
 
 # Get defaults (not sure if we'll use these):
 default_ha_restart_priority = config.get('HA Defaults', 'restart_priority')
