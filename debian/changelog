@@ -1,6 +1,7 @@
 opta-xenm (1.0.3) stable; urgency=low
 
-  * Added --force option to use hard_shutdown and hard_reboot instead of clean_
+  * Added --force option to use hard_shutdown and hard_reboot instead of clean
+  * Change remove to use the hard_shutdown function
   * Clean up parsing of arguments and dependency on global variables
 
  -- Alex Forbes <alex.forbes@optasports.com>  Tue, 27 Nov 2012 16:57:33 +0000 
