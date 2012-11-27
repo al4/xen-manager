@@ -989,8 +989,6 @@ else:
     message = 'Config file "' + str(configfile) + '" does not exist'
     error(message)
 
-
-
 # Set parser defaults from configfile before we parse
 parser.set_defaults(
     username=config.get('Main', 'username'),
@@ -1004,32 +1002,8 @@ parent_parser_template.set_defaults(
     template=config.get('Input', 'template')
     )
 
-## Old code. Better to set the defaults using config file as above and parse with defaults set
-# Override config if set on command line
-# if args.hosts != None: # args.hosts is a list and and hasattr requires a string for some reason! So the default must be set above
-#     hosts = args.hosts.split(',')
-# if hasattr(args, "password") and args.password != None:
-#     password = args.password
-# TEMP HACK:
-# These break for functions where the arg parser doesn't have the attribute, so they are commented out for now.
-# As a consequence template and vmlist can not be overridden on the command line
-
-# if hasattr(args, "template") and args.template != None:
-#     template = args.template
-# if hasattr(args, "vmlist") and args.template != None:
-#     vmlist = args.vmlist
-
 # Parse the arguments
 args = parser.parse_args()
-
-# Store config options in variables
-# hosts = args.hosts
-# username = config.get('Main', 'username')       # not in args anywhere so get straight from config
-# password = args.password
-# puppet_path = config.get('Main', 'puppet_path')# not in args anywhere so get straight from config
-# template = args.template
-# vmlist = args.vmlist
-# implants_file = config.get('Input', 'implants_file') # Not currently used
 
 # Set verbose mode. args.verbose is set by action='store_true' option in parser.
 if args.verbose:
