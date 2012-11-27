@@ -184,6 +184,7 @@ def action_stop():
     password = args.password
     vmname = args.vmname
 
+
     vmname = args.vmname
     host_name = get_host(vmname)
 
@@ -915,7 +916,7 @@ parser.add_argument('--vmlist', help='CSV file with a list of VMs and priorities
 parser.add_argument('--verbose', '-v', action='store_true', default=False, help='print more output')
 
 # Default options. It is reasonable to guess configfile, but host should be explicit in config or as argument
-parser.set_defaults(configfile='/etc/opta/xenm/xenm.cfg', hosts=None)
+parser.set_defaults(configfile='/etc/opta/xenm/xenm.cfg')
 
 # We setup subparsers for each mode
 subparsers = parser.add_subparsers(dest='action')
