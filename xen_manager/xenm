@@ -183,7 +183,7 @@ def action_stop():
     username = args.username
     password = args.password
     vmname = args.vmname
-
+    force = args.force
 
     vmname = args.vmname
     host_name = get_host(vmname)
@@ -203,7 +203,11 @@ def action_stop():
 
     try:
         myvm.read_from_xen()
-        result = shutdown(myvm)
+        if args.force:
+            notify('performing hard shutdown')
+            result = hard_shutdown(myvm)
+        else:
+            result = shutdown(myvm)
     finally:
         myhost.disconnect()
 
@@ -256,6 +260,7 @@ def action_restart():
     username = args.username
     password = args.password
     vmname = args.vmname
+    force=args.force
 
     vmname = args.vmname
     host_name = get_host(vmname)
@@ -276,7 +281,11 @@ def action_restart():
 
     try:
         if myvm.power_state == "Running":
-            result = clean_reboot(myvm)
+            if force:
+                notify('Performing hard reboot')
+                result = hard_reboot(myvm)
+            else:
+                result = clean_reboot(myvm)
         elif myvm.power_state == "Halted":
             notify(myvm.name + " was halted")
             result = power_on(myvm)
