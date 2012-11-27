@@ -361,7 +361,7 @@ def action_remove():
     myvm.read_from_xen()
 
     try:
-        shutdown(myvm)
+        hard_shutdown(myvm)
         remove_disks(myvm)
         destroy(myvm)
         puppet_clean(myvm)
