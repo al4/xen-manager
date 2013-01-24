@@ -1017,7 +1017,7 @@ def is_replicant(vm):
     if verbose: print("Checking replicant status...")
 
     # Run a shell command to test if the implant file exists
-    command = "ssh %s test -f /etc/implant" % (fqdn)
+    command = "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no %s test -f /etc/implant" % (fqdn)
     cmd = shlex.split(command)
     if verbose: print("Running '%s'" % (command))
 
