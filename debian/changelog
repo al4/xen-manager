@@ -1,3 +1,8 @@
+opta-xenm (1.0.4) stable; urgency=low
+
+  * Added check for the respawn and remove actions to ensure the VM is a
+    replicant
+  
 opta-xenm (1.0.3) stable; urgency=low
 
   * Added --force option to use hard_shutdown and hard_reboot instead of clean
