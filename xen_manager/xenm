@@ -25,6 +25,7 @@ pp = pprint.PrettyPrinter(indent=2) # for debugging
 def error(message):
     # Throw message and exit
     print("ERROR: " + str(message))
+    if not verbose: print("Exited with an error, try verbose mode for more clues")
     # disconnect()
     exit()
 
@@ -343,6 +344,7 @@ def action_remove():
     password = args.password
     vmname = args.vmname
     puppet_path = args.puppet_path
+    force=args.force
 
     # Get the host this vm resides on
     host_name = get_host(vmname)
@@ -360,6 +362,17 @@ def action_remove():
     # Create xen_vm object
     myvm = xen_vm(myhost, vm_id)
     myvm.read_from_xen()
+
+    # Ensure VM is a replicant (or force is True)
+    if is_replicant(myvm) == True:
+        replicant = True
+    else: replicant = False
+
+    if not replicant and not force:
+        error("%s is not a replicant" % (myvm.name))
+        exit(1)
+    elif not replicant and force:
+        notify("%s is not a replicant, but forced to continue anyway" % (myvm.name))
 
     try:
         hard_shutdown(myvm)
@@ -524,6 +537,7 @@ def action_respawn():
     puppet_path = args.puppet_path
     template = args.template
     vmlist = args.vmlist
+    force=args.force
 
     # for spawn, we can only work with a single host
     host_name = hosts[0]
@@ -560,6 +574,17 @@ def action_respawn():
         # object for the existing vm
         myvm = xen_vm(myhost, vm_id)
         myvm.read_from_xen()
+
+        # Ensure VM is a replicant (or force is True)
+        if is_replicant(myvm) == True:
+            replicant = True
+        else: replicant = False
+
+        if not replicant and not force:
+            error("%s is not a replicant" % (myvm.name))
+            exit(1)
+        elif not replicant and force:
+            notify("%s is not a replicant, but forced to continue anyway" % (myvm.name))
 
         # ready to go, destroy
         result = shutdown(myvm)
@@ -905,8 +930,16 @@ def action_debug():
         # Check
         check_result = myvm.read_from_xen()
 
-        # Check replicant
-        check_replicant(myvm)
+        # Ensure VM is a replicant (or force is True)
+        if is_replicant(myvm) == True:
+            replicant = True
+        else: replicant = False
+
+        if not replicant and not force:
+            error("%s is not a replicant" % (myvm.name))
+            exit(1)
+        elif not replicant and force:
+            notify("%s is not a replicant, but forced to continue anyway" % (myvm.name))
 
     finally:
         myhost.disconnect()
@@ -973,7 +1006,7 @@ def puppet_clean(vm):
         notify("Could not find the hostname in puppet, ensure DNS entries are set correctly")
     return return_code
 
-def check_replicant(vm):
+def is_replicant(vm):
     # This is a pretty ugly function that makes a direct system call to ssh to determine whether a server is a replicant or not
     # (i.e. if it has an implant)
     global args
@@ -989,10 +1022,14 @@ def check_replicant(vm):
     if verbose: print("Running '%s'" % (command))
 
     with open(os.devnull, "w") as fnull:
-        return_code = call(cmd, stdout=fnull, stderr=fnull)
+        return_code = call(cmd, stdout=fnull, stderr=fnull, shell=False)
 
     if verbose: print("Got code %s from '%s'" % (return_code, command))
-    return return_code
+
+    if return_code == 0:
+        return True
+    else:
+        return False
 
 ## end of functions
 
@@ -1085,7 +1122,7 @@ args = parser.parse_args()
 if args.verbose:
     verbose=True
     print("Verbose on")
-    pp.pprint(vars(args))
+    # pp.pprint(vars(args)) <- use action_debug for this
 else:
     verbose=False
 
