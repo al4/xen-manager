@@ -253,7 +253,6 @@ def hard_shutdown(vm):
         notify("Check failed")
         return check_result
 
-
 def action_restart():
     global args
 
@@ -314,7 +313,6 @@ def clean_reboot(vm):
         notify("Check failed")
         return check_result
 
-
 def hard_reboot(vm):
 
     check_result = vm.read_from_xen()
@@ -332,7 +330,6 @@ def hard_reboot(vm):
     else:
         notify("Check failed")
         return check_result
-
 
 def action_remove():
 
@@ -945,7 +942,6 @@ def action_debug():
         myhost.disconnect()
 
 ## Helper functions
-
 def get_host(vm_name):
     # Find the host a VM is on (NOT the DNS hostname of the vm)
     # Input: vm name
@@ -1033,114 +1029,115 @@ def is_replicant(vm):
 
 ## end of functions
 
-# Parse the commandline arguments using Python's argparse.
-parser = argparse.ArgumentParser(description='Manages our Xen cluster. First positional argument is action, use {action} -h for more help.')
+if __name__ == "__main__":
+    # Parse the commandline arguments using Python's argparse.
+    parser = argparse.ArgumentParser(description='Manages our Xen cluster. First positional argument is action, use {action} -h for more help.')
 
-parser.add_argument("--configfile", "-c", help="config file to use (/etc/opta/xenm/xenm.cfg by default)")
-parser.add_argument("--username", "-u", help="user name for Xen Server (default set in config")
-parser.add_argument("--password", "-p", help="root password for Xen Server (default set in config)") # Username is not configurable on the CLI at present as our license only allows root access.
-parser.add_argument('--hosts', help='Xen host(s) to connect to. These hosts must be the master of their cluster. Separate multiple hosts with commas.')
-parser.add_argument('--vmlist', help='CSV file with a list of VMs and priorities')
-parser.add_argument('--verbose', '-v', action='store_true', default=False, help='print more output')
+    parser.add_argument("--configfile", "-c", help="config file to use (/etc/opta/xenm/xenm.cfg by default)")
+    parser.add_argument("--username", "-u", help="user name for Xen Server (default set in config")
+    parser.add_argument("--password", "-p", help="root password for Xen Server (default set in config)") # Username is not configurable on the CLI at present as our license only allows root access.
+    parser.add_argument('--hosts', help='Xen host(s) to connect to. These hosts must be the master of their cluster. Separate multiple hosts with commas.')
+    parser.add_argument('--vmlist', help='CSV file with a list of VMs and priorities')
+    parser.add_argument('--verbose', '-v', action='store_true', default=False, help='print more output')
 
-# Default options. It is reasonable to guess configfile, but host should be explicit in config or as argument
-parser.set_defaults(configfile='/etc/opta/xenm/xenm.cfg')
+    # Default options. It is reasonable to guess configfile, but host should be explicit in config or as argument
+    parser.set_defaults(configfile='/etc/opta/xenm/xenm.cfg')
 
-# We setup subparsers for each mode
-subparsers = parser.add_subparsers(dest='action')
+    # We setup subparsers for each mode
+    subparsers = parser.add_subparsers(dest='action')
 
-# Parent parser for modes which operate on a single VM
-parent_parser_onevm = argparse.ArgumentParser(add_help=False)
-parent_parser_onevm.add_argument('vmname', help='name of VM to perform action on')
-parent_parser_onevm.add_argument('--force', '-f', action='store_true', default=False, help='force the specified action (currently only works for stop and restart; changes the API methods to hard_shutdown and hard_reboot respectively)')
+    # Parent parser for modes which operate on a single VM
+    parent_parser_onevm = argparse.ArgumentParser(add_help=False)
+    parent_parser_onevm.add_argument('vmname', help='name of VM to perform action on')
+    parent_parser_onevm.add_argument('--force', '-f', action='store_true', default=False, help='force the specified action (currently only works for stop and restart; changes the API methods to hard_shutdown and hard_reboot respectively)')
 
-# Parent for any option that uses a template
-parent_parser_template = argparse.ArgumentParser(add_help=False)
-parent_parser_template.add_argument('--template', '-t', help='name of template to use')
+    # Parent for any option that uses a template
+    parent_parser_template = argparse.ArgumentParser(add_help=False)
+    parent_parser_template.add_argument('--template', '-t', help='name of template to use')
 
-# The subparsers, most of which include one of the parents above
-parser_list = subparsers.add_parser('list', help='list all VMs')
-parser_listpools = subparsers.add_parser('list-pools', help='list all pools')
-parser_pools = subparsers.add_parser('pools', help='alias for list-pools')   # Alias of list-pools
-parser_start = subparsers.add_parser('start', help='starts a VM', parents=[parent_parser_onevm])
-parser_stop = subparsers.add_parser('stop', help='performs a shutdown, clean unless force is set', parents=[parent_parser_onevm])
-parser_status = subparsers.add_parser('status', help='shows the status of a VM', parents=[parent_parser_onevm])
-parser_restart = subparsers.add_parser('restart', help='performs a reboot, clean unless force is set', parents=[parent_parser_onevm])
-parser_remove = subparsers.add_parser('remove', help='removes a VM', parents=[parent_parser_onevm])
-parser_spawn = subparsers.add_parser('spawn', help='spawns a new VM', parents=[parent_parser_onevm, parent_parser_template])
-parser_respawn = subparsers.add_parser('respawn', help='removes and spawns a new copy of a VM', parents=[parent_parser_onevm, parent_parser_template])
-parser_enforce = subparsers.add_parser('enforce', help='enforce the HA policy on one VM', parents=[parent_parser_onevm])
-parser_enforce_all = subparsers.add_parser('enforce-all', help='check the HA policy on all VMs and enforce the policy (config must be set)')
-parser_debug = subparsers.add_parser('debug', help='debug method, used for testing', parents=[parent_parser_onevm])
+    # The subparsers, most of which include one of the parents above
+    parser_list = subparsers.add_parser('list', help='list all VMs')
+    parser_listpools = subparsers.add_parser('list-pools', help='list all pools')
+    parser_pools = subparsers.add_parser('pools', help='alias for list-pools')   # Alias of list-pools
+    parser_start = subparsers.add_parser('start', help='starts a VM', parents=[parent_parser_onevm])
+    parser_stop = subparsers.add_parser('stop', help='performs a shutdown, clean unless force is set', parents=[parent_parser_onevm])
+    parser_status = subparsers.add_parser('status', help='shows the status of a VM', parents=[parent_parser_onevm])
+    parser_restart = subparsers.add_parser('restart', help='performs a reboot, clean unless force is set', parents=[parent_parser_onevm])
+    parser_remove = subparsers.add_parser('remove', help='removes a VM', parents=[parent_parser_onevm])
+    parser_spawn = subparsers.add_parser('spawn', help='spawns a new VM', parents=[parent_parser_onevm, parent_parser_template])
+    parser_respawn = subparsers.add_parser('respawn', help='removes and spawns a new copy of a VM', parents=[parent_parser_onevm, parent_parser_template])
+    parser_enforce = subparsers.add_parser('enforce', help='enforce the HA policy on one VM', parents=[parent_parser_onevm])
+    parser_enforce_all = subparsers.add_parser('enforce-all', help='check the HA policy on all VMs and enforce the policy (config must be set)')
+    parser_debug = subparsers.add_parser('debug', help='debug method, used for testing', parents=[parent_parser_onevm])
 
-# Set the functions to be called by each sub-parser
-parser_list.set_defaults(func=action_list)
-parser_listpools.set_defaults(func=action_pools)
-parser_pools.set_defaults(func=action_pools)
-parser_start.set_defaults(func=action_start)
-parser_stop.set_defaults(func=action_stop)
-parser_status.set_defaults(func=action_status)
-parser_restart.set_defaults(func=action_restart)
-parser_remove.set_defaults(func=action_remove)
-parser_spawn.set_defaults(func=action_spawn)
-parser_respawn.set_defaults(func=action_respawn)
-parser_enforce.set_defaults(func=action_enforce)
-parser_enforce_all.set_defaults(func=action_enforce_all)
-parser_debug.set_defaults(func=action_debug)
+    # Set the functions to be called by each sub-parser
+    parser_list.set_defaults(func=action_list)
+    parser_listpools.set_defaults(func=action_pools)
+    parser_pools.set_defaults(func=action_pools)
+    parser_start.set_defaults(func=action_start)
+    parser_stop.set_defaults(func=action_stop)
+    parser_status.set_defaults(func=action_status)
+    parser_restart.set_defaults(func=action_restart)
+    parser_remove.set_defaults(func=action_remove)
+    parser_spawn.set_defaults(func=action_spawn)
+    parser_respawn.set_defaults(func=action_respawn)
+    parser_enforce.set_defaults(func=action_enforce)
+    parser_enforce_all.set_defaults(func=action_enforce_all)
+    parser_debug.set_defaults(func=action_debug)
 
-# We parse here to get the configfile, but it is overwritten later
-args = parser.parse_args()
+    # We parse here to get the configfile, but it is overwritten later
+    args = parser.parse_args()
 
-# Get config options from xenm.cfg if not set on command line
-configfile = args.configfile
-config = ConfigParser.RawConfigParser()
+    # Get config options from xenm.cfg if not set on command line
+    configfile = args.configfile
+    config = ConfigParser.RawConfigParser()
 
-# Check our config file exists
-if os.path.isfile(configfile):
-    config.read(configfile)
-else:
-    message = 'Config file "' + str(configfile) + '" does not exist'
-    error(message)
+    # Check our config file exists
+    if os.path.isfile(configfile):
+        config.read(configfile)
+    else:
+        message = 'Config file "' + str(configfile) + '" does not exist'
+        error(message)
 
-# Set parser defaults from configfile before we parse
-parser.set_defaults(
-    username=config.get('Main', 'username'),
-    password=config.get('Main', 'password'),
-    hosts=config.get('Main', 'hosts').split(','),
-    vmlist=config.get('Input', 'vmlist'),
-    puppet_path=config.get('Main', 'puppet_path'),       # not exposed on CLI as wouldn't really be used...
-    implants_file=config.get('Input', 'implants_file')  # Not currently used
-    )
-parent_parser_template.set_defaults(
-    template=config.get('Input', 'template')
-    )
+    # Set parser defaults from configfile before we parse
+    parser.set_defaults(
+        username=config.get('Main', 'username'),
+        password=config.get('Main', 'password'),
+        hosts=config.get('Main', 'hosts').split(','),
+        vmlist=config.get('Input', 'vmlist'),
+        puppet_path=config.get('Main', 'puppet_path'),       # not exposed on CLI as wouldn't really be used...
+        implants_file=config.get('Input', 'implants_file')  # Not currently used
+        )
+    parent_parser_template.set_defaults(
+        template=config.get('Input', 'template')
+        )
 
-# Parse the arguments
-args = parser.parse_args()
+    # Parse the arguments
+    args = parser.parse_args()
 
-# Set verbose mode. args.verbose is set by action='store_true' option in parser.
-if args.verbose:
-    verbose=True
-    print("Verbose on")
-    # pp.pprint(vars(args)) <- use action_debug for this
-else:
-    verbose=False
+    # Set verbose mode. args.verbose is set by action='store_true' option in parser.
+    if args.verbose:
+        verbose=True
+        print("Verbose on")
+        # pp.pprint(vars(args)) <- use action_debug for this
+    else:
+        verbose=False
 
-if verbose: print('Hosts: ' + str(args.hosts))
+    if verbose: print('Hosts: ' + str(args.hosts))
 
-# Get defaults (not sure if we'll use these):
-default_ha_restart_priority = config.get('HA Defaults', 'restart_priority')
-default_order = config.get('HA Defaults', 'order')
-default_start_delay = config.get('HA Defaults', 'start_delay')
+    # Get defaults (not sure if we'll use these):
+    default_ha_restart_priority = config.get('HA Defaults', 'restart_priority')
+    default_order = config.get('HA Defaults', 'order')
+    default_start_delay = config.get('HA Defaults', 'start_delay')
 
-# Call the function selected by set_default(func=)
-result = args.func()
+    # Call the function selected by set_default(func=)
+    result = args.func()
 
-# # Analyse what is returned
-# if result == 1:
-#   error("function returned error code")
+    # # Analyse what is returned
+    # if result == 1:
+    #   error("function returned error code")
 
-exit()
+    exit()
 
 
 
