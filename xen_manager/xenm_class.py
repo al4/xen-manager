@@ -57,14 +57,14 @@ class host:
         return vms[0]
 
 class xen_vm:
-    # This class should replace the original "virtual_machine" class that I originally wrote
+    # This class replaces the original "virtual_machine" class that I originally wrote
     # It takes the ID as input and doesn't "guess" the ID from the name
     # When calling this class we should already be connected to a host, and know the ID of the VM we're dealing with
 
     def __init__(self, hostObj, id):
-        self.id = id
-        self.host = hostObj
-        self.session = hostObj.session
+        self.id = id                    # The id of the virtual machine
+        self.host = hostObj             # The host object that this machine is running on
+        self.session = hostObj.session  # Shortcut to the hosts session (i.e. how we are connected to Xen)
 
     def get_name(self):
         self.name = self.session.xenapi.get_name_label(self.id)
@@ -73,7 +73,6 @@ class xen_vm:
     def get_record(self):
         self.record = self.session.xenapi.VM.get_record(self.id)
         return self.record
-
     def read_from_xen(self):
         # Reads all required values from Xen and sets them in the class
         try:
@@ -83,11 +82,8 @@ class xen_vm:
             print 'Failed to read VM attributes for ' + str(self.id)
             return 1
 
-        # Parse the values we need and set them in the class. Might be useful:
-        #   ha_restart_priority, start_delay, power_state, order
-
-        # Remember to add a get_ (and possibly set_) method for each field we track
-
+        # Parse the values we need and set them in the class.
+        # Remember to add get_ (and possibly set_) methods for each field we track
         self.name = str(data['name_label'])
         self.power_state = str(data['power_state'])
         self.ha_restart_priority = str(data['ha_restart_priority'])
@@ -214,17 +210,11 @@ class block_device:
     # Block devices are attached to VMs, could be a CDROM, hard disk, etc
     # We need to know about the VBD before we can do anything to associated VDIs
 
-    # This class differs a bit from the approach taken with virtual_machine, in that the input is
-    # an ID rather than the name.
-
-    # Putting the connection stuff in the virtul_machine class was a bit of a mistake, should really be separate.
-    # Doesn't really affect this code as it needs a session passed anyway, but it does in the application as you
-    # need to pass the virtual_machine's session object through.
-
     def __init__(self, id, session):
-        self.id = id
-        self.session = session
-        # would probably call this read_record but went with read_from_xen to be consistent with the vm class
+        self.id = id            # ID of the block device
+        self.session = session  # The session we are connected through (owned by the host)
+
+        # Get the data about the VBD from Xen
         record = self.session.xenapi.VBD.get_record(self.id)
 
         # Attributes we want
