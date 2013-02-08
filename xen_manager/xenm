@@ -44,8 +44,8 @@ def action_list():
     puppet_path=args.puppet_path
 
     # Lists which we append to (start with headings in first row)
-    header=[['name_label', 'pool', 'power_state', 'restart_priority', 'start_delay', 'order'],
-            ['----------', '----', '-----------', '----------------', '-----------', '-----']]
+    header=[['name_label', 'pool', 'replicant', 'power_state', 'restart_priority', 'start_delay', 'order'],
+            ['----------', '----', '---------', '-----------', '----------------', '-----------', '-----']]
     data_vms=[]
 
     for host_name in hosts:
@@ -65,12 +65,16 @@ def action_list():
             # Build a list of VMs that are not templates or control domains
             for vm_id in vms:
                 myvm = xen_vm(myhost, vm_id)
-                record = myvm.get_record()
+                # record = myvm.get_record()
 
                 if not(record["is_a_template"]) and not(record["is_control_domain"]):
+                    replicant = str(is_replicant(myvm))
+
                     data_vms.append([
                         record["name_label"],
-                        pool_name,record["power_state"],
+                        pool_name,
+                        replicant,
+                        record["power_state"],
                         record["ha_restart_priority"],
                         record["start_delay"],
                         record["order"]
@@ -361,9 +365,7 @@ def action_remove():
     myvm.read_from_xen()
 
     # Ensure VM is a replicant (or force is True)
-    if is_replicant(myvm) == True:
-        replicant = True
-    else: replicant = False
+    replicant = is_replicant(myvm)
 
     if not replicant and not force:
         error("%s is not a replicant" % (myvm.name))
@@ -474,11 +476,17 @@ def action_spawn():
         if check != None:
             error(vmname + " already exists")
 
+        # Clone from template
         newvm = clone_from_template(mytemplate, vmname)
         newvm.read_from_xen()
 
+        # Set HA, add replicant tag, power on
         set_ha_properties(newvm,args.vmlist)
+
+        newvm.add_tag("Replicant")
+
         power_on(newvm)
+
     finally:
         myhost.disconnect()
 
@@ -599,8 +607,11 @@ def action_respawn():
         newvm = clone_from_template(mytemplate, vmname)
         newvm.read_from_xen()
 
-        # Set HA and power on
+        # Set HA, replicant tag, and power on
         set_ha_properties(newvm,vmlist)
+
+        myvm.add_tag("Replicant")
+
         power_on(newvm)
 
     finally:
@@ -647,7 +658,7 @@ def action_enforce():
         # Get vm_id
         vm_id = myhost.get_vm(vmname)
 
-        # Create xen_vm object
+        # Create xen_vm objectdeb
         myvm = xen_vm(myhost, vm_id)
         myvm.read_from_xen()
 
@@ -894,6 +905,7 @@ def action_debug():
     puppet_path = args.puppet_path
     # template = args.template
     vmlist = args.vmlist
+    force = args.force
 
     host_name = get_host(vmname)
 
@@ -912,7 +924,7 @@ def action_debug():
         pp.pprint(v)
         # print(str(v[0]) + "\t" + str(v[1]))
 
-   # # Create new host object and connect
+    # Create new host object and connect
     myhost = host(host_name, username, password)
     myhost.connect()
 
@@ -927,16 +939,10 @@ def action_debug():
         # Check
         check_result = myvm.read_from_xen()
 
-        # Ensure VM is a replicant (or force is True)
-        if is_replicant(myvm) == True:
-            replicant = True
-        else: replicant = False
+        print("Dumping VM data:")
+        pp.pprint(vars(myvm))
 
-        if not replicant and not force:
-            error("%s is not a replicant" % (myvm.name))
-            exit(1)
-        elif not replicant and force:
-            notify("%s is not a replicant, but forced to continue anyway" % (myvm.name))
+        print("Replicant: " + str(is_replicant(myvm)))
 
     finally:
         myhost.disconnect()
@@ -1003,11 +1009,24 @@ def puppet_clean(vm):
     return return_code
 
 def is_replicant(vm):
+    # Check if a VM is a replicant by reading the tags (replaces previous SSH call)
+    tags = vm.get_tags()
+
+    if "Replicants" in tags:
+        return True
+    else:
+        if verbose: notify("%s is apparently not a replicant, check that it has the \"Replicants\" tag" % (vm.name))
+        return False
+
+
+def is_replicant_old(vm):
     # This is a pretty ugly function that makes a direct system call to ssh to determine whether a server is a replicant or not
     # (i.e. if it has an implant)
+
     global args
 
-    # Get fully qualified domain from vm name
+    # Get fully qualified domain from vm name. This logic is demonstrably flawed, while DNS name = VM name by convention,
+    # they are not the same thing and we could potentially get a false result if DNS is not configured properly
     fqdn = socket.getfqdn(vm.name)
 
     if verbose: print("Checking replicant status...")

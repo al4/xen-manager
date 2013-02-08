@@ -91,6 +91,7 @@ class xen_vm:
         self.order = str(data['order'])
         self.is_a_template = data['is_a_template']
         self.is_control_domain = data['is_control_domain']
+        self.tags = data['tags']
 
         return 0
 
@@ -130,6 +131,21 @@ class xen_vm:
         # get the implant from DNS TXT record
         pass
         return 0
+
+    def get_tags(self):
+        # Get the tags of the VM (presently used to track replicant status)
+        self.tags = self.session.xenapi.VM.get_tags(self.id)
+        return self.tags
+
+    def add_tag(self, tag):
+        # Annoyingly we cant just add a tag, we have to get the tags, add to the set, and set them
+        tags = self.get_tags()
+        new_tags = tags + [ tag ]
+
+        return self.session.xenapi.VM.set_tags(self.id, new_tags)
+
+    def get_all(self):
+        return self.session.VM.get_all(self.id)
 
     # Actions we can perform
     # Named to be consistent with the functions in the Xen API
