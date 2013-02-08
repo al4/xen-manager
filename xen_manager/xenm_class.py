@@ -73,13 +73,14 @@ class xen_vm:
     def get_record(self):
         self.record = self.session.xenapi.VM.get_record(self.id)
         return self.record
+
     def read_from_xen(self):
         # Reads all required values from Xen and sets them in the class
         try:
             data = self.session.xenapi.VM.get_record(self.id)
             #pp.pprint(data)
         except:
-            print 'Failed to read VM attributes for ' + str(self.id)
+            print('Failed to read VM attributes for ' + str(self.id))
             return 1
 
         # Parse the values we need and set them in the class.
