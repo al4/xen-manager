@@ -899,8 +899,9 @@ def action_status():
 def action_debug():
     # Debug method, output variables and call whatever feature we're testing
     global args
+    global config
 
-    print("Arguments:")
+    print("\nArguments:")
     pp.pprint(args)
 
     # Store config options in variables
@@ -919,16 +920,16 @@ def action_debug():
     variables=[
         ["hosts", args.hosts],
         ["username", args.username],
-        ["password", args.password],
+        # ["password", args.password],
         ["vmname", args.vmname],
         ["vmlist", args.vmlist],
         ["host_name", host_name],
     ]
 
-    print("Variables:")
-    for v in variables:
-        pp.pprint(v)
-        # print(str(v[0]) + "\t" + str(v[1]))
+    print("\nOption Variables:")
+    pp.pprint(variables)
+    # for v in variables:
+    #    print(str(v[0]) + "\t" + str(v[1]))
 
     # Create new host object and connect
     myhost = host(host_name, username, password)
@@ -945,11 +946,15 @@ def action_debug():
         # Check
         check_result = myvm.read_from_xen()
 
-        print("Dumping VM data:")
-        # pp.pprint(vars(myvm))
-        pp.pprint(myvm.get_record())
+        print("\nVM data:")
+        pp.pprint(vars(myvm))
+        # pp.pprint(myvm.get_record())
 
-        print("Replicant: " + str(is_replicant(myvm)))
+        # Spits out root password
+        # print("\nHost data:")
+        # pp.pprint(vars(myvm.host))
+
+        print("\nReplicant: " + str(is_replicant(myvm)))
 
     finally:
         myhost.disconnect()
