@@ -7,6 +7,7 @@ import XenAPI               # Gee I wonder why we need this
 from subprocess import call # for external system calls
 import socket               # for socket.getfqdn()
 import shlex                # shell lexical analyser, for splitting shell command strings
+from operator import itemgetter
 
 # Our modules
 from xenm_class import block_device
@@ -74,17 +75,21 @@ def action_list():
                     if "Replicants" in record["tags"]: replicant = "True"
                     else: replicant = "False"
 
-                    data_vms.append([
-                        record["name_label"],
-                        pool_name,
-                        replicant,
-                        record["power_state"],
-                        record["ha_restart_priority"],
-                        record["start_delay"],
-                        record["order"]
-                        ])
+                    data_vms.append(
+                        (
+                            record["name_label"],
+                            pool_name,
+                            replicant,
+                            record["power_state"],
+                            record["ha_restart_priority"],
+                            record["start_delay"],
+                            record["order"],
+                        )
+                    )
         finally:
             myhost.disconnect()
+
+    data_vms.sort(key=itemgetter(1,2,0))
 
     if verbose: print("")
     col_width = max(len(word) for row in data_vms for word in row) + 2
