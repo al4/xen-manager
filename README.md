@@ -9,7 +9,7 @@ would require significant adaptation to work elsewhere.
 In the future I hope to improve upon the code and make it more generally useful.
 
 ---
-
+```
 usage: xenm [-h] [--configfile CONFIGFILE] [--username USERNAME]
             [--password PASSWORD] [--hosts HOSTS] [--vmlist VMLIST]
             [--verbose]
@@ -51,3 +51,4 @@ optional arguments:
                         commas.
   --vmlist VMLIST       CSV file with a list of VMs and priorities
   --verbose, -v         print more output
+ ```
