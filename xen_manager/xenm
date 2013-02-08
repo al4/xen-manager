@@ -65,10 +65,14 @@ def action_list():
             # Build a list of VMs that are not templates or control domains
             for vm_id in vms:
                 myvm = xen_vm(myhost, vm_id)
-                # record = myvm.get_record()
+                record = myvm.get_record()
 
                 if not(record["is_a_template"]) and not(record["is_control_domain"]):
-                    replicant = str(is_replicant(myvm))
+                    # replicant = str(is_replicant(myvm))
+
+                    # reading from the list directly avoids an API call
+                    if "Replicants" in record["tags"]: replicant = "True"
+                    else: replicant = "False"
 
                     data_vms.append([
                         record["name_label"],
@@ -483,7 +487,8 @@ def action_spawn():
         # Set HA, add replicant tag, power on
         set_ha_properties(newvm,args.vmlist)
 
-        newvm.add_tag("Replicant")
+        # No need to set tag as this is inherited from the template
+        # newvm.add_tag("Replicant")
 
         power_on(newvm)
 
@@ -610,7 +615,8 @@ def action_respawn():
         # Set HA, replicant tag, and power on
         set_ha_properties(newvm,vmlist)
 
-        myvm.add_tag("Replicant")
+        # No need to set tag as this is inherited from the template
+        # myvm.add_tag("Replicant")
 
         power_on(newvm)
 
@@ -940,7 +946,8 @@ def action_debug():
         check_result = myvm.read_from_xen()
 
         print("Dumping VM data:")
-        pp.pprint(vars(myvm))
+        # pp.pprint(vars(myvm))
+        pp.pprint(myvm.get_record())
 
         print("Replicant: " + str(is_replicant(myvm)))
 
@@ -1011,15 +1018,16 @@ def puppet_clean(vm):
 def is_replicant(vm):
     # Check if a VM is a replicant by reading the tags (replaces previous SSH call)
     tags = vm.get_tags()
+    # make lower case so we're not case sensitive
+    tags_lower = [x.lower() for x in tags]
 
-    if "Replicants" in tags:
+    if "replicants" in tags_lower:
         return True
     else:
         if verbose: notify("%s is apparently not a replicant, check that it has the \"Replicants\" tag" % (vm.name))
         return False
 
-
-def is_replicant_old(vm):
+def is_replicant_old(vm): # deprecated, rewrote to use tags
     # This is a pretty ugly function that makes a direct system call to ssh to determine whether a server is a replicant or not
     # (i.e. if it has an implant)
 
