@@ -168,25 +168,6 @@ def action_start():
 
     return result
 
-def power_on(vm):
-
-    check_result = vm.read_from_xen()
-
-    if check_result == 0:
-        print("Starting " + vm.name + "...")
-        result = vm.start()
-        if result == 0:
-            print("Start succeeded")
-            return result
-        elif result == 1:
-            notify("VM already running")
-            return result
-        else:
-            error("Unknown return value from vm.start()")
-    else:
-        notify("Check failed")
-        return check_result
-
 def action_stop():
 
     global args
@@ -225,44 +206,6 @@ def action_stop():
         myhost.disconnect()
 
     return result
-
-def shutdown(vm):
-
-    check_result = vm.read_from_xen()
-
-    if check_result == 0:
-        print("Stopping " + vm.name + "...")
-        result = vm.clean_shutdown()
-        if result == 0:
-            print("Stop succeeded")
-            return result
-        elif result == 1:
-            notify("VM already halted")
-            return result
-        else:
-            error("Unknown return value from vm.clean_shutdown()")
-    else:
-        notify("Check failed")
-        return check_result
-
-def hard_shutdown(vm):
-
-    check_result = vm.read_from_xen()
-
-    if check_result == 0:
-        print("Crashing " + vm.name + "...")
-        result = vm.hard_shutdown()
-        if result == 0:
-            print("Stop succeeded")
-            return result
-        elif result == 1:
-            notify("VM already halted")
-            return result
-        else:
-            error("Unknown return value from vm.clean_shutdown()")
-    else:
-        notify("Check failed")
-        return check_result
 
 def action_restart():
     global args
@@ -305,42 +248,6 @@ def action_restart():
         myhost.disconnect()
 
     return result
-
-def clean_reboot(vm):
-
-    check_result = vm.read_from_xen()
-
-    if check_result == 0:
-        print("Restarting " + vm.name + "...")
-        result = vm.clean_reboot()
-        if result == 0:
-            print("Reboot succeeded")
-        elif result == 1:
-            notify("reboot failed")
-        else:
-            error("Unknown return value from vm.clean_reboot()")
-        return result
-    else:
-        notify("Check failed")
-        return check_result
-
-def hard_reboot(vm):
-
-    check_result = vm.read_from_xen()
-
-    if check_result == 0:
-        print("Restarting " + vm.name + "...")
-        result = vm.hard_reboot()
-        if result == 0:
-            print("Reboot succeeded")
-        elif result == 1:
-            notify("reboot failed")
-        else:
-            error("Unknown return value from vm.clean_reboot()")
-        return result
-    else:
-        notify("Check failed")
-        return check_result
 
 def action_remove():
 
@@ -387,55 +294,6 @@ def action_remove():
         puppet_clean(myvm)
     finally:
         myhost.disconnect()
-
-def destroy(vm):
-
-    check_result = vm.read_from_xen()
-
-    if check_result == 0:
-        print("Removing " + vm.name + " from " + vm.host.name + "...")
-
-        result = vm.destroy()
-        if result == 0:
-            print("Remove succeeded")
-            return 0
-        else:
-            return result
-
-def remove_disks(vm):
-    # Remove all disks from a VM.
-    vbd_ids = vm.read_vbds()
-
-    if len(vbd_ids) == 0:
-        notify(vm.name + "has no disks to remove")
-
-    # vms can have multiple vbds so we loop over them
-    for id in vbd_ids:
-        # This next bit is probably quite hard to read.
-        # The vbd and vdi classes both need and ID and session passed to them.
-        # for the vbd, this is the ID return from the vm class (as it is one of its block devices)
-        # for vdi, this is the ID returned from the vbd class (vbd.VDI)
-        vbd = block_device(id, vm.session)
-
-        # vbd can only have one vdi (at least I hope so, it is not returning a list), so here
-        # we check if it is NULL and if not delete it
-        if vbd.vdi_id == 'OpaqueRef:NULL':
-            # No vdi to delete
-            continue
-        elif len(vbd.vdi_id) == 46:
-            # Looks like a valid VDI attached to a valid VBD attached to a VM we are removing...
-            vdi = disk_image(vbd.vdi_id, vm.session)
-
-            # Check this VDI is not attached to any other VBDs
-            if len(vdi.VBDs) > 1:
-                notify("Not removing VBD with ID " + vdi.id + " as it is attached to another VM")
-            else:
-                print("Deleting " + vbd.device + " from " + vm.name + "...")
-                vdi.destroy()
-        else:
-            error = "Unexpected VDI ID"
-            return 1
-    return 0
 
 def action_spawn():
     # Function to spawn a new VM from template
@@ -497,45 +355,6 @@ def action_spawn():
 
     finally:
         myhost.disconnect()
-
-def clone_from_template(mytemplate, vm_name):
-    ''' Inputs: mytemplate  ==  template xen_vm object (must have a host)
-                vm_name     ==  string, name of vm
-        Returns: xen_vm object (created from the clone)
-    '''
-
-    # Check that we don't already have a valid vm with the same name
-    check = mytemplate.host.get_vm(vm_name)
-    if check != None:
-        error(vm_name + " already exists")
-
-    # Make sure template VM is actually a template
-    is_template = mytemplate.get_template_status()
-    if is_template == False:
-        error("Template VM given is not a template")
-    elif is_template == True:
-        print("Cloning " + mytemplate.name + " to " + vm_name + "...")
-        new_id = mytemplate.clone(mytemplate.id, vm_name)
-
-        # Instantiate a new VM object with the VM we just created by cloning. Pass through host object of the template
-        myvm = xen_vm(mytemplate.host,new_id)
-
-        check = myvm.read_from_xen()
-        if check != 0:
-            error("Clone failed")
-
-        # Cloned VMs are made as templates, we need to set is_a_template to false
-        if myvm.is_a_template == True:
-            myvm.set_template_status(False)
-        elif myvm.is_a_template == False:
-            notify("Expected new clone to be a template but this was not the case, investigate?")
-        else:
-            error("Could not get template status of " + myvm.name)
-
-    else: error("Could not get template status of " + mytemplate.name)
-
-    # return the new vm object
-    return myvm
 
 def action_respawn():
     # Function to respawn an existing VM from template
@@ -681,62 +500,6 @@ def action_enforce():
             error("Check failed")
     finally:
         myhost.disconnect()
-
-def set_ha_properties(myvm, vmlist):
-    # Sets the HA properties of a VM. Inputs: vm object, vmlist (string containing path to CSV file containing VMs and HA priorites)
-
-    # Check the vm list is present
-    if not os.path.isfile(vmlist):
-        message = 'VM List "' + str(vmlist) + '" does not exist'
-        error(message)
-
-    count = 0
-
-    # Read csv file
-    with open(vmlist, 'rb') as csvfile:
-        reader = csv.reader(csvfile, delimiter=' ')
-
-        # Get current values
-        current_order = myvm.get_order()
-        current_start_delay = myvm.start_delay
-        current_priority = myvm.ha_restart_priority
-
-        # Find out what the HA values should be
-        # Check the config file:
-        count = 0
-
-        for row in reader:
-            # Pass over rows with the incorrect number of fields
-            if len(row) != 2:
-                continue
-
-            # See if this is the row we want
-            if row[1] == myvm.name:
-                count += 1
-                # TODO: currently only the order is defined in the config file
-                order = row[0]
-                start_delay = 0         # This is not in the config file yet, may want to make it configurable later.
-                priority = "restart"    # Also not in the config file yet. But if the VM is in there we assume it is important, so always restart
-            else:
-                continue
-
-    # if we didn't find the vm in the config, use defaults:
-    if count == 0:
-        print("Could not find entry for " + myvm.name + " in " + vmlist + ", using defaults")
-        order = default_order
-        start_delay = default_start_delay
-        priority = default_ha_restart_priority
-
-    # Now set them if they differ
-    if int(current_order) != int(order):
-        print(myvm.name + " order: " + str(current_order) + " => " + str(order))
-        myvm.set_order(str(order))
-    if int(current_start_delay) != int(start_delay):
-        print(myvm.name + " start_delay: " + str(current_start_delay) + " => " + str(start_delay))
-        myvm.set_start_delay(str(start_delay))
-    if str(current_priority) != str(priority):
-        print(myvm.name + " priority: " + str(current_priority) + " => " + str(priority))
-        myvm.set_ha_restart_priority(str(priority))
 
 def action_enforce_all():
     # Loop over each VM on each host, look for appropriate entry in the CSV file, and fix if different
@@ -961,6 +724,244 @@ def action_debug():
 
     finally:
         myhost.disconnect()
+
+## Action functions / setting values
+def power_on(vm):
+
+    check_result = vm.read_from_xen()
+
+    if check_result == 0:
+        print("Starting " + vm.name + "...")
+        result = vm.start()
+        if result == 0:
+            print("Start succeeded")
+            return result
+        elif result == 1:
+            notify("VM already running")
+            return result
+        else:
+            error("Unknown return value from vm.start()")
+    else:
+        notify("Check failed")
+        return check_result
+
+def shutdown(vm):
+
+    check_result = vm.read_from_xen()
+
+    if check_result == 0:
+        print("Stopping " + vm.name + "...")
+        result = vm.clean_shutdown()
+        if result == 0:
+            print("Stop succeeded")
+            return result
+        elif result == 1:
+            notify("VM already halted")
+            return result
+        else:
+            error("Unknown return value from vm.clean_shutdown()")
+    else:
+        notify("Check failed")
+        return check_result
+
+def hard_shutdown(vm):
+
+    check_result = vm.read_from_xen()
+
+    if check_result == 0:
+        print("Crashing " + vm.name + "...")
+        result = vm.hard_shutdown()
+        if result == 0:
+            print("Stop succeeded")
+            return result
+        elif result == 1:
+            notify("VM already halted")
+            return result
+        else:
+            error("Unknown return value from vm.clean_shutdown()")
+    else:
+        notify("Check failed")
+        return check_result
+
+def remove_disks(vm):
+    # Remove all disks from a VM.
+    vbd_ids = vm.read_vbds()
+
+    if len(vbd_ids) == 0:
+        notify(vm.name + "has no disks to remove")
+
+    # vms can have multiple vbds so we loop over them
+    for id in vbd_ids:
+        # This next bit is probably quite hard to read.
+        # The vbd and vdi classes both need and ID and session passed to them.
+        # for the vbd, this is the ID return from the vm class (as it is one of its block devices)
+        # for vdi, this is the ID returned from the vbd class (vbd.VDI)
+        vbd = block_device(id, vm.session)
+
+        # vbd can only have one vdi (at least I hope so, it is not returning a list), so here
+        # we check if it is NULL and if not delete it
+        if vbd.vdi_id == 'OpaqueRef:NULL':
+            # No vdi to delete
+            continue
+        elif len(vbd.vdi_id) == 46:
+            # Looks like a valid VDI attached to a valid VBD attached to a VM we are removing...
+            vdi = disk_image(vbd.vdi_id, vm.session)
+
+            # Check this VDI is not attached to any other VBDs
+            if len(vdi.VBDs) > 1:
+                notify("Not removing VBD with ID " + vdi.id + " as it is attached to another VM")
+            else:
+                print("Deleting " + vbd.device + " from " + vm.name + "...")
+                vdi.destroy()
+        else:
+            error = "Unexpected VDI ID"
+            return 1
+    return 0
+
+def set_ha_properties(myvm, vmlist):
+    # Sets the HA properties of a VM. Inputs: vm object, vmlist (string containing path to CSV file containing VMs and HA priorites)
+
+    # Check the vm list is present
+    if not os.path.isfile(vmlist):
+        message = 'VM List "' + str(vmlist) + '" does not exist'
+        error(message)
+
+    count = 0
+
+    # Read csv file
+    with open(vmlist, 'rb') as csvfile:
+        reader = csv.reader(csvfile, delimiter=' ')
+
+        # Get current values
+        current_order = myvm.get_order()
+        current_start_delay = myvm.start_delay
+        current_priority = myvm.ha_restart_priority
+
+        # Find out what the HA values should be
+        # Check the config file:
+        count = 0
+
+        for row in reader:
+            # Pass over rows with the incorrect number of fields
+            if len(row) != 2:
+                continue
+
+            # See if this is the row we want
+            if row[1] == myvm.name:
+                count += 1
+                # TODO: currently only the order is defined in the config file
+                order = row[0]
+                start_delay = 0         # This is not in the config file yet, may want to make it configurable later.
+                priority = "restart"    # Also not in the config file yet. But if the VM is in there we assume it is important, so always restart
+            else:
+                continue
+
+    # if we didn't find the vm in the config, use defaults:
+    if count == 0:
+        print("Could not find entry for " + myvm.name + " in " + vmlist + ", using defaults")
+        order = default_order
+        start_delay = default_start_delay
+        priority = default_ha_restart_priority
+
+    # Now set them if they differ
+    if int(current_order) != int(order):
+        print(myvm.name + " order: " + str(current_order) + " => " + str(order))
+        myvm.set_order(str(order))
+    if int(current_start_delay) != int(start_delay):
+        print(myvm.name + " start_delay: " + str(current_start_delay) + " => " + str(start_delay))
+        myvm.set_start_delay(str(start_delay))
+    if str(current_priority) != str(priority):
+        print(myvm.name + " priority: " + str(current_priority) + " => " + str(priority))
+        myvm.set_ha_restart_priority(str(priority))
+
+def clone_from_template(mytemplate, vm_name):
+    ''' Inputs: mytemplate  ==  template xen_vm object (must have a host)
+                vm_name     ==  string, name of vm
+        Returns: xen_vm object (created from the clone)
+    '''
+
+    # Check that we don't already have a valid vm with the same name
+    check = mytemplate.host.get_vm(vm_name)
+    if check != None:
+        error(vm_name + " already exists")
+
+    # Make sure template VM is actually a template
+    is_template = mytemplate.get_template_status()
+    if is_template == False:
+        error("Template VM given is not a template")
+    elif is_template == True:
+        print("Cloning " + mytemplate.name + " to " + vm_name + "...")
+        new_id = mytemplate.clone(mytemplate.id, vm_name)
+
+        # Instantiate a new VM object with the VM we just created by cloning. Pass through host object of the template
+        myvm = xen_vm(mytemplate.host,new_id)
+
+        check = myvm.read_from_xen()
+        if check != 0:
+            error("Clone failed")
+
+        # Cloned VMs are made as templates, we need to set is_a_template to false
+        if myvm.is_a_template == True:
+            myvm.set_template_status(False)
+        elif myvm.is_a_template == False:
+            notify("Expected new clone to be a template but this was not the case, investigate?")
+        else:
+            error("Could not get template status of " + myvm.name)
+
+    else: error("Could not get template status of " + mytemplate.name)
+
+    # return the new vm object
+    return myvm
+
+def destroy(vm):
+
+    check_result = vm.read_from_xen()
+
+    if check_result == 0:
+        print("Removing " + vm.name + " from " + vm.host.name + "...")
+
+        result = vm.destroy()
+        if result == 0:
+            print("Remove succeeded")
+            return 0
+        else:
+            return result
+
+def clean_reboot(vm):
+
+    check_result = vm.read_from_xen()
+
+    if check_result == 0:
+        print("Restarting " + vm.name + "...")
+        result = vm.clean_reboot()
+        if result == 0:
+            print("Reboot succeeded")
+        elif result == 1:
+            notify("reboot failed")
+        else:
+            error("Unknown return value from vm.clean_reboot()")
+        return result
+    else:
+        notify("Check failed")
+        return check_result
+
+def hard_reboot(vm):
+
+    check_result = vm.read_from_xen()
+
+    if check_result == 0:
+        print("Restarting " + vm.name + "...")
+        result = vm.hard_reboot()
+        if result == 0:
+            print("Reboot succeeded")
+        elif result == 1:
+            notify("reboot failed")
+        else:
+            error("Unknown return value from vm.clean_reboot()")
+        return result
+    else:
+        notify("Check failed")
+        return check_result
 
 ## Helper functions
 def get_host(vm_name):
