@@ -10,12 +10,10 @@ import shlex                # shell lexical analyser, for splitting shell comman
 from operator import itemgetter
 
 # Our modules
-from xenm_class import block_device
-from xenm_class import disk_image
-from xenm_class import host
-from xenm_class import xen_vm     # This is the same as virtual_machine but takes an ID as input and not a name.
-                            # This is the more "correct" way of doing things and functions should be
-                            # updated to use this class instead
+from xenm_class import host         # a xen host
+from xenm_class import xen_vm       # a virtual machine, attached to a xen host
+from xenm_class import block_device # a block device, attached to a VM
+from xenm_class import disk_image   # a disk image, attached to a block device
 
 import pprint # for debugging
 pp = pprint.PrettyPrinter(indent=2) # for debugging
