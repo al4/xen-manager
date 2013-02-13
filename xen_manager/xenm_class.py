@@ -65,23 +65,26 @@ class xen_vm:
         self.id = id                    # The id of the virtual machine
         self.host = hostObj             # The host object that this machine is running on
         self.session = hostObj.session  # Shortcut to the hosts session (i.e. how we are connected to Xen)
+        self.record = ""                # The VM record, use this to test if we've fetched from xen or not
+        # Should we read at this point or not...
+        # self.read_from_xen()
 
     def get_name(self):
-        self.name = self.session.xenapi.get_name_label(self.id)
+        # self.name = self.session.xenapi.get_name_label(self.id)
         return self.name
 
     def get_record(self):
-        self.record = self.session.xenapi.VM.get_record(self.id)
+        # Return the raw VM record
+        if self.record == "":
+            # Fetch via API if not set in object yet
+            self.record = self.session.xenapi.VM.get_record(self.id)
+            # print("x") # count the X's to find the numbe of API calls...
+
         return self.record
 
     def read_from_xen(self):
         # Reads all required values from Xen and sets them in the class
-        try:
-            data = self.session.xenapi.VM.get_record(self.id)
-            #pp.pprint(data)
-        except:
-            print('Failed to read VM attributes for ' + str(self.id))
-            return 1
+        data = self.get_record()
 
         # Parse the values we need and set them in the class.
         # Remember to add get_ (and possibly set_) methods for each field we track
@@ -102,7 +105,7 @@ class xen_vm:
         return self.session.xenapi.VM.set_order(self.id, str(order))
 
     def get_order(self):
-        self.order = self.session.xenapi.VM.get_order(self.id)
+        # self.order = self.session.xenapi.VM.get_order(self.id)
         return self.order
 
     def set_ha_restart_priority(self, priority):
@@ -113,7 +116,7 @@ class xen_vm:
         return 0
 
     def get_ha_restart_priority(self):
-        self.ha_restart_priority = self.session.xenapi.VM.get_ha_restart_priority(self.id)
+        # self.ha_restart_priority = self.session.xenapi.VM.get_ha_restart_priority(self.id)
         return self.ha_restart_priority
 
     def set_start_delay(self, start_delay):
@@ -125,25 +128,34 @@ class xen_vm:
         return self.start_delay
 
     def get_start_delay(self):
-        self.start_delay = self.session.xenapi.VM.get_start_delay(self.id)
+        # self.start_delay = self.session.xenapi.VM.get_start_delay(self.id)
         return self.start_delay
 
     def get_implant(self):
-        # get the implant from DNS TXT record
-        pass
+
         return 0
 
     def get_tags(self):
         # Get the tags of the VM (presently used to track replicant status)
-        self.tags = self.session.xenapi.VM.get_tags(self.id)
+        # self.tags = self.session.xenapi.VM.get_tags(self.id)
         return self.tags
 
     def add_tag(self, tag):
-        # Annoyingly we cant just add a tag, we have to get the tags, add to the set, and set them
-        tags = self.get_tags()
-        new_tags = tags + [ tag ]
+        # Add a tag to the vm
+        new_tags = self.tags + [ tag ]
 
         return self.session.xenapi.VM.set_tags(self.id, new_tags)
+
+    def is_replicant(self):
+        # Check if a VM is a replicant by reading the tags
+
+        # make lower case so we're not case sensitive
+        tags_lower = [x.lower() for x in self.tags]
+
+        if "replicants" in tags_lower:
+            return True
+        else:
+            return False
 
     def get_all(self):
         return self.session.VM.get_all(self.id)

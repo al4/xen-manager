@@ -58,11 +58,14 @@ def action_list():
 
             if verbose:
                 print("Getting VMs from " + myhost.name + "...")
-
-            vms = myhost.get_vms()
+                vms = myhost.get_vms()
+                print("Found %s VMs" % (len(vms)))
+            else:
+                vms = myhost.get_vms()
 
             # Build a list of VMs that are not templates or control domains
             for vm_id in vms:
+                counter += 1
                 myvm = xen_vm(myhost, vm_id)
                 record = myvm.get_record()
 
@@ -87,6 +90,7 @@ def action_list():
         finally:
             myhost.disconnect()
 
+    # Sort the result
     data_vms.sort(key=itemgetter(1,2,0))
 
     if verbose: print("")
@@ -646,16 +650,14 @@ def action_status():
 
         if verbose: print("")
 
-        col_width1 = max(len(word) for row in data_vms for word in row) + 2
-        col_width2 = max(len(word) for row in header for word in row) + 2
-
-        col_width = max(col_width1,col_width2)
-
-        for row in header:
-            print("".join(word.ljust(col_width) for word in row))
-        for row in data_vms:
-            print("".join(word.ljust(col_width) for word in row))
-
+        print("Name:\t\t\t%s" % (record["name_label"]))
+        print("Pool:\t\t\t%s" % (pool_name))
+        print("Power State:\t\t%s" % (record["power_state"]))
+        print("Restart Priority:\t%s" % (record["ha_restart_priority"]))
+        print("Start Delay:\t\t%s" % (record["start_delay"]))
+        print("Order:\t\t\t%s" % (record["order"]))
+        print("Tags:\t\t\t%s" % (str(myvm.get_tags())))
+        print("Replicant:\t\t%s" % (str(myvm.is_replicant())))
 
     finally:
         myhost.disconnect()
@@ -720,7 +722,7 @@ def action_debug():
         # print("\nHost data:")
         # pp.pprint(vars(myvm.host))
 
-        print("\nReplicant: " + str(is_replicant(myvm)))
+        print("\nReplicant: " + str(myvm.is_replicant()))
 
     finally:
         myhost.disconnect()
@@ -778,7 +780,7 @@ def hard_shutdown(vm):
             notify("VM already halted")
             return result
         else:
-            error("Unknown return value from vm.clean_shutdown()")
+            error("Unknown return value from vm.hard_shutdown()")
     else:
         notify("Check failed")
         return check_result
