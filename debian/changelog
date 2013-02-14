@@ -1,3 +1,12 @@
+opta-xenm (1.1.0) stable; urgency=low
+  
+  * New minor version because I felt like it
+  * Now remembers memory size on respawn
+  * Add option to set memory size on command line when spawning and respawning
+    (e.g. xenm spawn -m 512 myNewVm)
+
+ -- Alex Forbes <alex.forbes@optasports.com>  Thu, 14 Feb 2013 19:29:00 +0000 
+
 opta-xenm (1.0.6) stable; urgency=low
 
   * Sort output of xenm list by pool, replicant status, name
