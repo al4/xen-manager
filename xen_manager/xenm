@@ -26,7 +26,7 @@ def error(message):
     print("ERROR: " + str(message))
     if not verbose: print("Exited with an error, try verbose mode for more clues")
     # disconnect()
-    exit()
+    exit(1)
 
 def notify(message):
     # Notify user but don't quit
