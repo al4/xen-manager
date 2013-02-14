@@ -185,7 +185,7 @@ def action_stop():
     vmname = args.vmname
     host_name = get_host(vmname)
 
-    if host_name == None:
+    if host_name == 1:
         error(vmname + " does not exist on any defined hosts")
 
     # Create new host object and connect
@@ -223,7 +223,7 @@ def action_restart():
     vmname = args.vmname
     host_name = get_host(vmname)
 
-    if host_name == None:
+    if host_name == 1:
         error(vmname + " does not exist on any defined hosts")
 
     # Create new host object and connect
@@ -267,7 +267,7 @@ def action_remove():
     # Get the host this vm resides on
     host_name = get_host(vmname)
 
-    if host_name == None:
+    if host_name == 1:
         error(vmname + " does not exist on any defined hosts")
 
     # Create new host object and connect
@@ -493,7 +493,7 @@ def action_enforce():
     vmname = args.vmname
     host_name = get_host(vmname)
 
-    if host_name == None:
+    if host_name == 1:
         error(vmname + " does not exist on any defined hosts")
 
     # Create new host object and connect
@@ -631,7 +631,7 @@ def action_status():
     vmname = args.vmname
     host_name = get_host(vmname)
 
-    if host_name == None:
+    if host_name == 1:
         error(vmname + " does not exist on any defined hosts")
 
     header=[['name_label', 'pool', 'power_state', 'restart_priority', 'start_delay', 'order'],
