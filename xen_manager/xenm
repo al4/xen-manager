@@ -374,18 +374,13 @@ def action_respawn():
     vmlist = args.vmlist
     force=args.force
 
-    # for spawn, we can only work with a single host
-    host_name = hosts[0]
+    # find the host this VM is on
+    host_name = get_host(vmname)
 
     # instantiate host
     myhost = host(host_name, username, password)
     myhost.connect()
     myhost.get_pool()
-
-    if len(hosts) > 1:
-        #error("Spawn requires that only one host is set, define a single host on the command line with the --host option")
-        # We take the first one instead:
-        notify("Host was not set explicitly, using " + myhost.pool + " (" + myhost.name + ") to spawn VM")
 
     try:
         # get id of template
@@ -1002,6 +997,8 @@ def get_host(vm_name):
     if len(host_list) == 1:
         if verbose: print("Found " + vm_name + " on " + host_list[0])
         return host_list[0]
+
+    # This is really a problem if we get here... should probably raise exception
     return 0
 
 def puppet_clean(vm):
