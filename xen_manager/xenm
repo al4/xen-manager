@@ -634,10 +634,6 @@ def action_status():
     if host_name == 1:
         error(vmname + " does not exist on any defined hosts")
 
-    header=[['name_label', 'pool', 'power_state', 'restart_priority', 'start_delay', 'order'],
-            ['----------', '----', '-----------', '----------------', '-----------', '-----']]
-    data_vms=[]
-
     # Create new host object and connect
     myhost = host(host_name, username, password)
     myhost.connect()
@@ -653,20 +649,12 @@ def action_status():
         pool_name = myvm.host.get_pool()
         record = myvm.get_record()
 
-        data_vms.append([
-            record["name_label"],
-            pool_name,
-            record["power_state"],
-            record["ha_restart_priority"],
-            record["start_delay"],
-            record["order"]
-                ])
-
         if verbose: print("")
 
         print("Name:\t\t\t%s" % (record["name_label"]))
         print("Pool:\t\t\t%s" % (pool_name))
         print("Power State:\t\t%s" % (record["power_state"]))
+        print("Memory:\t\t\t%sM" % (str(int(record["memory_static_max"])/(1024**2))))
         print("Restart Priority:\t%s" % (record["ha_restart_priority"]))
         print("Start Delay:\t\t%s" % (record["start_delay"]))
         print("Order:\t\t\t%s" % (record["order"]))
