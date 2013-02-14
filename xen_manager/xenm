@@ -150,8 +150,8 @@ def action_start():
     # Get host name
     host_name = get_host(vmname)
 
-    if host_name == None:
-        error(vmname + " does not exist on any defined hosts")
+    if host_name == 1:
+        error("Problem locating %s on defined hosts" % (vmname))
 
     # Create new host object and connect
     myhost = host(host_name, username, password)
@@ -354,6 +354,12 @@ def action_spawn():
         # No need to set tag as this is inherited from the template
         # newvm.add_tag("Replicant")
 
+        if args.memory != 0:
+            # Use what was set on CLI. Otherwise Xen will use the value of the template
+            memory_size = (int(args.memory)*(1024**2))
+            result = newvm.set_memory_size(memory_size)
+            if result == 0: print("Memory size: %sM" % args.memory)
+
         power_on(newvm)
 
     finally:
@@ -377,12 +383,16 @@ def action_respawn():
     # find the host this VM is on
     host_name = get_host(vmname)
 
+    if host_name == 1:
+        error("Problem locating %s" % (vmname))
+
     # instantiate host
     myhost = host(host_name, username, password)
-    myhost.connect()
-    myhost.get_pool()
 
     try:
+        myhost.connect()
+        myhost.get_pool()
+
         # get id of template
         template_id = myhost.get_vm(template)
         vm_id = myhost.get_vm(vmname)
@@ -416,6 +426,13 @@ def action_respawn():
         elif not replicant and force:
             notify("%s is not a replicant, but forced to continue anyway" % (myvm.name))
 
+        if args.memory == 0:
+            # Remember the memory size of the existing VM
+            memory_size = myvm.get_memory_size()
+        else:
+            # Use what was set on CLI
+            memory_size = (int(args.memory)*(1024**2))
+
         # ready to go, destroy
         result = shutdown(myvm)
         if result != 0: notify("Failed to shut down " + myvm.name)
@@ -432,8 +449,11 @@ def action_respawn():
         newvm = clone_from_template(mytemplate, vmname)
         newvm.read_from_xen()
 
-        # Set HA, replicant tag, and power on
+        # Set HA, memory size
         set_ha_properties(newvm,vmlist)
+        print("Memory size: %sM" % str((int(memory_size)/(1024**2))) )
+
+        newvm.set_memory_size(memory_size)
 
         # No need to set tag as this is inherited from the template
         # myvm.add_tag("Replicant")
@@ -989,13 +1009,13 @@ def get_host(vm_name):
             myhost.disconnect()
 
     if len(host_list) == 0:
-        print("Could not find " + vm_name + " on any hosts")
-        return None
+        notify("Could not find " + vm_name + " on any hosts")
+        return 1
     if len(host_list) > 1:
-        print("Found " + vm_name + " on multiple hosts")
+        notify("Found " + vm_name + " on multiple hosts")
         return 1
     if len(host_list) == 1:
-        if verbose: print("Found " + vm_name + " on " + host_list[0])
+        if verbose: notify("Found " + vm_name + " on " + host_list[0])
         return host_list[0]
 
     # This is really a problem if we get here... should probably raise exception
@@ -1088,6 +1108,9 @@ if __name__ == "__main__":
     # Parent for any option that uses a template
     parent_parser_template = argparse.ArgumentParser(add_help=False)
     parent_parser_template.add_argument('--template', '-t', help='name of template to use')
+    # the name "template" no longer makes sense but it is logical to lump the memory option with the template, as it is useful in the same situations
+    # if size is zero the code will not set it at all, which results in the VM template's value being used
+    parent_parser_template.add_argument('--memory', '-m', default=0, help='memory size to use for new VMs in MB')
 
     # The subparsers, most of which include one of the parents above
     parser_list = subparsers.add_parser('list', help='list all VMs')
