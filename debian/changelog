@@ -1,6 +1,8 @@
 opta-xenm (1.0.6) stable; urgency=low
 
   * Sort output of xenm list by pool, replicant status, name
+  * Reduce number of API calls in get_ methods (small performance improvement)
+  * xenm status now lists attributes by line rather than column
   
  -- Alex Forbes <alex.forbes@optasports.com>  Fri, 8 Feb 2013 18:06:00 +0000 
 

@@ -65,7 +65,6 @@ def action_list():
 
             # Build a list of VMs that are not templates or control domains
             for vm_id in vms:
-                counter += 1
                 myvm = xen_vm(myhost, vm_id)
                 record = myvm.get_record()
 
