@@ -96,6 +96,7 @@ class xen_vm:
         self.is_a_template = data['is_a_template']
         self.is_control_domain = data['is_control_domain']
         self.tags = data['tags']
+        self.memory_size = data['memory_target']
 
         return 0
 
@@ -139,6 +140,9 @@ class xen_vm:
         # Get the tags of the VM (presently used to track replicant status)
         # self.tags = self.session.xenapi.VM.get_tags(self.id)
         return self.tags
+
+    def get_memory_size(self):
+        return self.memory_size
 
     def add_tag(self, tag):
         # Add a tag to the vm
@@ -233,6 +237,22 @@ class xen_vm:
     def read_vbds(self):
         self.vbds = self.session.xenapi.VM.get_VBDs(self.id)
         return self.vbds
+
+    def set_memory_size(self, memory_size):
+        # While we read only static_max when determining size, we must set more than this...
+        try:
+            # self.session.xenapi.set_memory_dynamic_max(self.id, memory_size)
+            # self.session.xenapi.set_memory_dynamic_min(self.id, memory_size)
+            # self.session.xenapi.set_memory_static_max(self.id, memory_size)
+            # self.session.xenapi.set_memory_target(self.id, memory_size)
+
+            # Better 1 api call than 4
+            self.session.xenapi.VM.set_memory_limits(self.id, str(memory_size), str(memory_size), str(memory_size), str(memory_size))
+
+            return 0
+        except Exception:
+            raise
+            return 1
 
 class block_device:
     # Class for a virtual block device.
